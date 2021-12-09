@@ -15,6 +15,7 @@ class ONF(nn.Module):
         self._mean = mean
         self._sigma = sigma
         self.encoding_layer = nn.Linear(2, 100, bias=True)
+        torch.nn.init.normal_(self.encoding_layer.weight)
 
     def forward(self, x):
         x = (x - self._mean) / self._sigma

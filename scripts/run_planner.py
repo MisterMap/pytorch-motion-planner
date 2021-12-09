@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
@@ -21,28 +23,28 @@ torch.random.manual_seed(100)
 np.random.seed(100)
 
 device = "cpu"
-collision_model = ONF(1.5, 0.5).to(device)
+collision_model = ONF(1.5, 1).to(device)
 collision_checker = CollisionChecker(0.3, (0, 3, 0, 3))
 obstacle_points = get_obstacle_points()
 collision_checker.update_obstacle_points(obstacle_points)
-collision_optimizer = torch.optim.Adam(collision_model.parameters(), 2e-2)
-trajectory = torch.zeros(1000, 2, requires_grad=True, device=device)
-trajectory_optimizer = torch.optim.Adam([trajectory], 1e-2)
+collision_optimizer = torch.optim.Adam(collision_model.parameters(), 1e-2)
+trajectory = torch.zeros(100, 2, requires_grad=True, device=device)
+trajectory_optimizer = torch.optim.Adam([trajectory], 1e-2, betas=(0.9, 0.999))
 planner = NERFOptPlanner(trajectory, collision_model, collision_checker, collision_optimizer,
-                         trajectory_optimizer, trajectory_random_offset=0.02, collision_weight=0.001,
-                         velocity_hessian_weight=100, random_field_points=20, init_collision_iteration=200)
+                         trajectory_optimizer, trajectory_random_offset=0.02, collision_weight=0.01,
+                         velocity_hessian_weight=3, random_field_points=10, init_collision_iteration=400)
 goal_point = np.array([2.5, 2.5], dtype=np.float32)
 start_point = np.array([0.5, 0.5], dtype=np.float32)
-trajectory_boundaries = (-0.2, 3.2, -0.2, 3.2)
+trajectory_boundaries = (-0.1, 3.1, -0.1, 3.1)
 
 planner.init(start_point, goal_point, trajectory_boundaries)
 
-fig = None
+fig = plt.figure(1, dpi=200)
+
 for i in range(1000):
     planner.step()
     trajectory = planner.get_path()
-    if fig is not None:
-        fig.clear()
-    fig = prepare_figure(trajectory_boundaries, 1)
+    fig.clear()
+    prepare_figure(trajectory_boundaries)
     plot_planner_data(trajectory, collision_model, trajectory_boundaries, obstacle_points, device=device)
     plt.pause(0.01)

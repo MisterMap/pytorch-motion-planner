@@ -9,7 +9,8 @@ from .continuous_planner import ContinuousPlanner
 class NERFOptPlanner(ContinuousPlanner):
     def __init__(self, trajectory, collision_model, collision_checker, collision_optimizer, trajectory_optimizer,
                  trajectory_random_offset, collision_weight, velocity_hessian_weight, init_collision_iteration=100,
-                 reparametrize_trajectory_freq=10, optimize_collision_model_freq=1, random_field_points=10):
+                 init_collision_points=100, reparametrize_trajectory_freq=10, optimize_collision_model_freq=1,
+                 random_field_points=10):
         self._trajectory = trajectory
         device = self._trajectory.device
         self._goal_point = torch.zeros(1, 2, device=device)
@@ -25,6 +26,7 @@ class NERFOptPlanner(ContinuousPlanner):
         self._collision_weight = collision_weight
         self._inv_hessian = self._calculate_inv_hessian(self._trajectory.shape[0], velocity_hessian_weight)
         self._init_collision_iteration = init_collision_iteration
+        self._init_collision_points = init_collision_points
         self._reparametrize_trajectory_freq = reparametrize_trajectory_freq
         self._optimize_collision_model_freq = optimize_collision_model_freq
         self._random_field_points = random_field_points
@@ -71,14 +73,14 @@ class NERFOptPlanner(ContinuousPlanner):
     def _sample_collision_checker_points(self):
         positions = self._random_intermediate_positions().detach().cpu().numpy()
         positions = positions + np.random.randn(positions.shape[0], 2) * self._trajectory_random_offset
-        return np.concatenate([positions, self._sample_random_field_points()], axis=0)
+        return np.concatenate([positions, self._sample_random_field_points(self._random_field_points)], axis=0)
 
     def _random_intermediate_positions(self):
         t = torch.tensor(np.random.rand(self._trajectory.shape[0] - 1).astype(np.float32), device=self._device)[:, None]
         return self._trajectory[1:] * (1 - t) + self._trajectory[:-1] * t
 
-    def _sample_random_field_points(self):
-        random_points = np.random.rand(self._random_field_points, 2)
+    def _sample_random_field_points(self, points_count):
+        random_points = np.random.rand(points_count, 2)
         random_points[:, 0] = self._random_sample_border[0] + random_points[:, 0] * (
                 self._random_sample_border[1] - self._random_sample_border[0])
         random_points[:, 1] = self._random_sample_border[2] + random_points[:, 1] * (
@@ -128,7 +130,7 @@ class NERFOptPlanner(ContinuousPlanner):
 
     def _init_collision_model(self):
         for i in range(self._init_collision_iteration):
-            positions = self._sample_random_field_points()
+            positions = self._sample_random_field_points(self._init_collision_points)
             self._optimize_collision_model(positions)
 
     def update_goal_point(self, goal_point):

@@ -11,12 +11,10 @@ def plot_planner_data(plotted_trajectory, collision_model, boundaries, obstacle_
     plt.tight_layout()
 
 
-def prepare_figure(boundaries, number=None):
-    fig = plt.figure(number, dpi=200)
+def prepare_figure(boundaries):
     plt.gca().set_aspect("equal")
     plt.xlim(boundaries[0], boundaries[1])
     plt.ylim(boundaries[2], boundaries[3])
-    return fig
 
 
 def plot_model_heatmap(model, boundaries, device):
