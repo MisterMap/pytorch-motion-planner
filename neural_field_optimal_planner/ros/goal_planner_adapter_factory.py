@@ -16,12 +16,12 @@ class GoalPlannerAdapterFactory(object):
         transform_receiver_factory = TransformReceiverFactory()
         robot_state = RobotState(transform_receiver_factory)
         map_adapter = MapAdapter(map_topic_name="map")
-        collision_checker = CollisionChecker(robot_radius=0.3)
+        collision_checker = CollisionChecker(robot_radius=0.35)
         collision_checker_adapter = CollisionCheckerAdapter(collision_checker, point_topic_name="obstacle_points",
                                                             map_adapter=map_adapter)
         planner = GoalPlannerAdapterFactory.make_onf_planner(collision_checker_adapter)
         return GoalPlannerAdapter(planner, map_adapter, robot_state, goal_topic_name="/move_base_simple/goal",
-                                  path_topic_name="/path", planning_timeout=1, planner_rate=1)
+                                  path_topic_name="/path", planning_timeout=0.1, planner_rate=10)
 
     @staticmethod
     def make_onf_planner(collision_checker):

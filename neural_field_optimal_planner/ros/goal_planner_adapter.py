@@ -28,6 +28,7 @@ class GoalPlannerAdapter(object):
         if boundaries is None:
             rospy.logwarn("[GoalPlannerAdapter] - Boundaries is None, map is not yet received")
             rospy.logwarn("[GoalPlannerAdapter] - Planning goal is skipped")
+            return
         with self._mutex:
             self._planner.init(start_point, goal_point, boundaries)
             self._is_planning = True
