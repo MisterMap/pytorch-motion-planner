@@ -25,4 +25,3 @@ class ContinuousPlanner(object):
     @abc.abstractmethod
     def update_start_point(self, start_point):
         raise NotImplementedError()
-

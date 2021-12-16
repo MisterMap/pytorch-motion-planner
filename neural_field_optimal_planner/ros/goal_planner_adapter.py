@@ -1,0 +1,49 @@
+import time
+
+import geometry_msgs.msg
+import nav_msgs.msg
+import rospy
+
+from ..utils.position2 import Position2
+
+
+class GoalPlannerAdapter(object):
+    def __init__(self, planner, map_adapter, robot_state, goal_topic_name, path_topic_name, planning_timeout,
+                 planner_rate):
+        self._planner = planner
+        self._map_adapter = map_adapter
+        self._robot_state = robot_state
+        self._is_planning = False
+        self._planning_timeout = planning_timeout
+        self._path_publisher = rospy.Publisher(path_topic_name, nav_msgs.msg.Path, queue_size=1)
+        self._planner_timer = rospy.Timer(rospy.Duration(1 / planner_rate), self._planner_timer_callback)
+        self._goal_subscriber = rospy.Subscriber(goal_topic_name, geometry_msgs.msg.PoseStamped, self._callback)
+
+    def _callback(self, message):
+        start_point = self._robot_state.position.translation
+        goal_point = Position2.from_ros_pose(message.pose.pose).translation
+        boundaries = self._map_adapter.boundaries
+        if boundaries is None:
+            rospy.logwarn("[GoalPlannerAdapter] - Boundaries is None, map is not yet received")
+            rospy.logwarn("[GoalPlannerAdapter] - Planning goal is skipped")
+        self._planner.init(start_point, goal_point, boundaries)
+        self._is_planning = True
+
+    def _planner_timer_callback(self, _):
+        if not self._is_planning:
+            return
+        start_point = self._robot_state.position.translation
+        self._planner.update_start_point(start_point)
+        start_planning_time = time.time()
+        while time.time() - start_planning_time < self._planning_timeout:
+            self._planner.step()
+        path = self._planner.get_path()
+        path = [Position2.from_vec([x[0], x[1], 0]) for x in path]
+        self._publish_path(path)
+
+    def _publish_path(self, path):
+        message = nav_msgs.msg.Path()
+        message.header.frame_id = "map"
+        message.header.stamp = rospy.Time().now()
+        message.poses = [geometry_msgs.msg.PoseStamped(pose=x.as_ros_pose()) for x in path]
+        self._path_publisher.publish(message)

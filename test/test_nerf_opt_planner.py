@@ -69,6 +69,6 @@ class TestNERFOptPlanner(unittest.TestCase):
 
             if fig is not None:
                 fig.clear()
-            fig = prepare_figure(boundaries, 1)
+            fig = prepare_figure(boundaries)
             plot_planner_data(trajectory, collision_model, boundaries, obstacle_points)
             plt.pause(0.01)

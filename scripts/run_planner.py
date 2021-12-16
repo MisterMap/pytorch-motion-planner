@@ -23,10 +23,11 @@ torch.random.manual_seed(100)
 np.random.seed(100)
 
 device = "cpu"
-collision_model = ONF(1.5, 1).to(device)
 collision_checker = CollisionChecker(0.3, (0, 3, 0, 3))
 obstacle_points = get_obstacle_points()
 collision_checker.update_obstacle_points(obstacle_points)
+
+collision_model = ONF(1.5, 1).to(device)
 collision_optimizer = torch.optim.Adam(collision_model.parameters(), 1e-2)
 trajectory = torch.zeros(100, 2, requires_grad=True, device=device)
 trajectory_optimizer = torch.optim.Adam([trajectory], 1e-2, betas=(0.9, 0.999))

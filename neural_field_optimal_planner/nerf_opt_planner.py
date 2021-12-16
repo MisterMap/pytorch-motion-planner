@@ -52,7 +52,8 @@ class NERFOptPlanner(ContinuousPlanner):
             self._optimize_collision_model()
         self._optimize_trajectory()
         if self._step_count % self._reparametrize_trajectory_freq == 0:
-            self.reparametrize_trajectory()
+            with torch.no_grad():
+                self.reparametrize_trajectory()
         self._step_count += 1
 
     def full_trajectory(self):
@@ -139,7 +140,7 @@ class NERFOptPlanner(ContinuousPlanner):
             delta = torch.sum((self._trajectory - self._goal_point) ** 2, dim=1)
             min_index = torch.argmin(delta)
             self._trajectory.data[min_index:] = self._goal_point
-        self.reparametrize_trajectory()
+            self.reparametrize_trajectory()
         self._step_count = 0
 
     def update_start_point(self, start_point):
@@ -148,7 +149,7 @@ class NERFOptPlanner(ContinuousPlanner):
             delta = torch.sum((self._trajectory - self._start_point) ** 2, dim=1)
             min_index = torch.argmin(delta)
             self._trajectory.data[:min_index] = self._start_point
-        self.reparametrize_trajectory()
+            self.reparametrize_trajectory()
         self._step_count = 0
 
     def set_boundaries(self, boundaries):
@@ -156,24 +157,23 @@ class NERFOptPlanner(ContinuousPlanner):
         self._step_count = 0
 
     def reparametrize_trajectory(self):
-        with torch.no_grad():
-            full_trajectory = self.full_trajectory()
-            distances = torch.norm(full_trajectory[1:] - full_trajectory[:-1], dim=1)
-            normalized_distances = distances / torch.sum(distances)
-            cdf = torch.cumsum(normalized_distances, dim=0)
-            cdf = torch.cat([torch.zeros(1, device=self._device), cdf], dim=0)
-            uniform_samples = torch.linspace(0, 1, len(full_trajectory), device=self._device)[1:-1]
-            indices = torch.searchsorted(cdf, uniform_samples)
-            index_above = torch.where(indices > len(full_trajectory) - 1, len(full_trajectory) - 1, indices)
-            index_bellow = torch.where(indices - 1 < 0, 0, indices - 1)
-            cdf_above = torch.gather(cdf, 0, index_above)
-            cdf_bellow = torch.gather(cdf, 0, index_bellow)
-            index_above = torch.repeat_interleave(index_above[:, None], 2, dim=1)
-            index_bellow = torch.repeat_interleave(index_bellow[:, None], 2, dim=1)
-            trajectory_above = torch.gather(full_trajectory, 0, index_above)
-            trajectory_bellow = torch.gather(full_trajectory, 0, index_bellow)
-            denominator = cdf_above - cdf_bellow
-            denominator = torch.where(denominator < 1e-5, torch.ones_like(denominator) * 1e-5, denominator)
-            t = (uniform_samples - cdf_bellow) / denominator
-            trajectory = (1 - t[:, None]) * trajectory_bellow + t[:, None] * trajectory_above
-            self._trajectory.data = trajectory
+        full_trajectory = self.full_trajectory()
+        distances = torch.norm(full_trajectory[1:] - full_trajectory[:-1], dim=1)
+        normalized_distances = distances / torch.sum(distances)
+        cdf = torch.cumsum(normalized_distances, dim=0)
+        cdf = torch.cat([torch.zeros(1, device=self._device), cdf], dim=0)
+        uniform_samples = torch.linspace(0, 1, len(full_trajectory), device=self._device)[1:-1]
+        indices = torch.searchsorted(cdf, uniform_samples)
+        index_above = torch.where(indices > len(full_trajectory) - 1, len(full_trajectory) - 1, indices)
+        index_bellow = torch.where(indices - 1 < 0, 0, indices - 1)
+        cdf_above = torch.gather(cdf, 0, index_above)
+        cdf_bellow = torch.gather(cdf, 0, index_bellow)
+        index_above = torch.repeat_interleave(index_above[:, None], 2, dim=1)
+        index_bellow = torch.repeat_interleave(index_bellow[:, None], 2, dim=1)
+        trajectory_above = torch.gather(full_trajectory, 0, index_above)
+        trajectory_bellow = torch.gather(full_trajectory, 0, index_bellow)
+        denominator = cdf_above - cdf_bellow
+        denominator = torch.where(denominator < 1e-5, torch.ones_like(denominator) * 1e-5, denominator)
+        t = (uniform_samples - cdf_bellow) / denominator
+        trajectory = (1 - t[:, None]) * trajectory_bellow + t[:, None] * trajectory_above
+        self._trajectory.data = trajectory
