@@ -16,6 +16,10 @@ class CollisionCheckerAdapter(object):
 
     def _callback(self, message):
         obstacle_points = np.array([point for point in pc2.read_points(message)])
+        if len(obstacle_points) == 0:
+            obstacle_points = np.zeros((0, 2))
+        else:
+            obstacle_points = obstacle_points[:, :2]
         if self._map_adapter is not None:
             map_point_points = self._map_adapter.point_cloud
             obstacle_points = np.concatenate([obstacle_points, map_point_points], axis=0)

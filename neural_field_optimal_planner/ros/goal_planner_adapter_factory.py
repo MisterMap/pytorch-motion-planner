@@ -21,7 +21,7 @@ class GoalPlannerAdapterFactory(object):
                                                             map_adapter=map_adapter)
         planner = GoalPlannerAdapterFactory.make_onf_planner(collision_checker_adapter)
         return GoalPlannerAdapter(planner, map_adapter, robot_state, goal_topic_name="/move_base_simple/goal",
-                                  path_topic_name="/path", planning_timeout=0.1, planner_rate=10)
+                                  path_topic_name="/path", planning_timeout=1, planner_rate=1)
 
     @staticmethod
     def make_onf_planner(collision_checker):

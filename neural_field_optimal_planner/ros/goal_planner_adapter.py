@@ -1,3 +1,4 @@
+import threading
 import time
 
 import geometry_msgs.msg
@@ -15,29 +16,32 @@ class GoalPlannerAdapter(object):
         self._robot_state = robot_state
         self._is_planning = False
         self._planning_timeout = planning_timeout
+        self._mutex = threading.Lock()
         self._path_publisher = rospy.Publisher(path_topic_name, nav_msgs.msg.Path, queue_size=1)
         self._planner_timer = rospy.Timer(rospy.Duration(1 / planner_rate), self._planner_timer_callback)
         self._goal_subscriber = rospy.Subscriber(goal_topic_name, geometry_msgs.msg.PoseStamped, self._callback)
 
     def _callback(self, message):
         start_point = self._robot_state.position.translation
-        goal_point = Position2.from_ros_pose(message.pose.pose).translation
+        goal_point = Position2.from_ros_pose(message.pose).translation
         boundaries = self._map_adapter.boundaries
         if boundaries is None:
             rospy.logwarn("[GoalPlannerAdapter] - Boundaries is None, map is not yet received")
             rospy.logwarn("[GoalPlannerAdapter] - Planning goal is skipped")
-        self._planner.init(start_point, goal_point, boundaries)
-        self._is_planning = True
+        with self._mutex:
+            self._planner.init(start_point, goal_point, boundaries)
+            self._is_planning = True
 
     def _planner_timer_callback(self, _):
-        if not self._is_planning:
-            return
-        start_point = self._robot_state.position.translation
-        self._planner.update_start_point(start_point)
-        start_planning_time = time.time()
-        while time.time() - start_planning_time < self._planning_timeout:
-            self._planner.step()
-        path = self._planner.get_path()
+        with self._mutex:
+            if not self._is_planning:
+                return
+            start_point = self._robot_state.position.translation
+            self._planner.update_start_point(start_point)
+            start_planning_time = time.time()
+            while time.time() - start_planning_time < self._planning_timeout:
+                self._planner.step()
+            path = self._planner.get_path()
         path = [Position2.from_vec([x[0], x[1], 0]) for x in path]
         self._publish_path(path)
 

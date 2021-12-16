@@ -86,6 +86,7 @@ class Position2(object):
         return self.from_vec([x, y, -self.rotation])
 
     def apply(self, points):
-        x1 = points.x * np.cos(self._angle) - points.y * np.sin(self._angle) + self._x
-        y1 = points.x * np.sin(self._angle) + points.y * np.cos(self._angle) + self._y
+        x, y = points.T
+        x1 = x * np.cos(self._angle) - y * np.sin(self._angle) + self._x
+        y1 = x * np.sin(self._angle) + y * np.cos(self._angle) + self._y
         return np.stack([x1, y1], axis=1)

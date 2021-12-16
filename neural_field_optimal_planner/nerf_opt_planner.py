@@ -11,6 +11,7 @@ class NERFOptPlanner(ContinuousPlanner):
                  trajectory_random_offset, collision_weight, velocity_hessian_weight, init_collision_iteration=100,
                  init_collision_points=100, reparametrize_trajectory_freq=10, optimize_collision_model_freq=1,
                  random_field_points=10):
+        torch.autograd.set_detect_anomaly(True)
         self._trajectory = trajectory
         device = self._trajectory.device
         self._goal_point = torch.zeros(1, 2, device=device)
@@ -114,8 +115,8 @@ class NERFOptPlanner(ContinuousPlanner):
         return self._trajectory.detach().cpu().numpy()
 
     def init(self, start_point, goal_point, boundaries):
-        self._start_point = torch.tensor(start_point, device=self._device)[None]
-        self._goal_point = torch.tensor(goal_point, device=self._device)[None]
+        self._start_point = torch.tensor(start_point.astype(np.float32), device=self._device)[None]
+        self._goal_point = torch.tensor(goal_point.astype(np.float32), device=self._device)[None]
         self._random_sample_border = boundaries
         self._init_trajectory()
         self._init_collision_model()
@@ -135,7 +136,7 @@ class NERFOptPlanner(ContinuousPlanner):
             self._optimize_collision_model(positions)
 
     def update_goal_point(self, goal_point):
-        self._goal_point = torch.tensor(goal_point, device=self._device)[None]
+        self._goal_point = torch.tensor(goal_point.astype(np.float32), device=self._device)[None]
         with torch.no_grad():
             delta = torch.sum((self._trajectory - self._goal_point) ** 2, dim=1)
             min_index = torch.argmin(delta)
@@ -144,7 +145,7 @@ class NERFOptPlanner(ContinuousPlanner):
         self._step_count = 0
 
     def update_start_point(self, start_point):
-        self._start_point = torch.tensor(start_point, device=self._device)[None]
+        self._start_point = torch.tensor(start_point.astype(np.float32), device=self._device)[None]
         with torch.no_grad():
             delta = torch.sum((self._trajectory - self._start_point) ** 2, dim=1)
             min_index = torch.argmin(delta)
