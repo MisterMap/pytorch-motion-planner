@@ -16,7 +16,7 @@ class GoalPlannerAdapterFactory(object):
         transform_receiver_factory = TransformReceiverFactory()
         robot_state = RobotState(transform_receiver_factory)
         map_adapter = MapAdapter(map_topic_name="map")
-        collision_checker = CollisionChecker(robot_radius=0.35)
+        collision_checker = CollisionChecker(robot_radius=0.3)
         collision_checker_adapter = CollisionCheckerAdapter(collision_checker, point_topic_name="obstacle_points",
                                                             map_adapter=map_adapter)
         planner = GoalPlannerAdapterFactory.make_onf_planner(collision_checker_adapter)
@@ -27,7 +27,7 @@ class GoalPlannerAdapterFactory(object):
     def make_onf_planner(collision_checker):
         device = "cpu"
         collision_model = ONF(1.5, 1).to(device)
-        collision_optimizer = torch.optim.Adam(collision_model.parameters(), 1e-2)
+        collision_optimizer = torch.optim.Adam(collision_model.parameters(), 1e-3, betas=(0.9, 0.9))
         trajectory = torch.zeros(100, 2, requires_grad=True, device=device)
         trajectory_optimizer = torch.optim.Adam([trajectory], 1e-2, betas=(0.9, 0.999))
         return NERFOptPlanner(trajectory, collision_model, collision_checker, collision_optimizer,

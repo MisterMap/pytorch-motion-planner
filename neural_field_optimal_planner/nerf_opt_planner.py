@@ -112,7 +112,7 @@ class NERFOptPlanner(ContinuousPlanner):
         return torch.sum(collision_probabilities)
 
     def get_path(self):
-        return self._trajectory.detach().cpu().numpy()
+        return self.full_trajectory().detach().cpu().numpy()
 
     def init(self, start_point, goal_point, boundaries):
         self._start_point = torch.tensor(start_point.astype(np.float32), device=self._device)[None]
