@@ -159,7 +159,7 @@ class NERFOptPlanner(ContinuousPlanner):
 
     def reparametrize_trajectory(self):
         full_trajectory = self.full_trajectory()
-        distances = torch.norm(full_trajectory[1:] - full_trajectory[:-1], dim=1)
+        distances = self._calculate_distances()
         normalized_distances = distances / torch.sum(distances)
         cdf = torch.cumsum(normalized_distances, dim=0)
         cdf = torch.cat([torch.zeros(1, device=self._device), cdf], dim=0)
@@ -169,8 +169,8 @@ class NERFOptPlanner(ContinuousPlanner):
         index_bellow = torch.where(indices - 1 < 0, 0, indices - 1)
         cdf_above = torch.gather(cdf, 0, index_above)
         cdf_bellow = torch.gather(cdf, 0, index_bellow)
-        index_above = torch.repeat_interleave(index_above[:, None], 2, dim=1)
-        index_bellow = torch.repeat_interleave(index_bellow[:, None], 2, dim=1)
+        index_above = torch.repeat_interleave(index_above[:, None], self._trajectory.shape[1], dim=1)
+        index_bellow = torch.repeat_interleave(index_bellow[:, None], self._trajectory.shape[1], dim=1)
         trajectory_above = torch.gather(full_trajectory, 0, index_above)
         trajectory_bellow = torch.gather(full_trajectory, 0, index_bellow)
         denominator = cdf_above - cdf_bellow
@@ -178,3 +178,7 @@ class NERFOptPlanner(ContinuousPlanner):
         t = (uniform_samples - cdf_bellow) / denominator
         trajectory = (1 - t[:, None]) * trajectory_bellow + t[:, None] * trajectory_above
         self._trajectory.data = trajectory
+
+    def _calculate_distances(self):
+        full_trajectory = self.full_trajectory()
+        return torch.norm(full_trajectory[1:] - full_trajectory[:-1], dim=1)
