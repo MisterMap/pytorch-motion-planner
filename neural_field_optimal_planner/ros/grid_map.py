@@ -24,8 +24,8 @@ class GridMap(object):
         height, width = self._map.shape
         bottom = self._origin.y
         left = self._origin.x
-        top = bottom + height
-        right = left + width
+        top = bottom + height * self._resolution
+        right = left + width * self._resolution
         return left, right, bottom, top
 
     @classmethod

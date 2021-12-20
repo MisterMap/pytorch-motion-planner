@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 from neural_field_optimal_planner.collision_checker import CollisionChecker
 from neural_field_optimal_planner.planner_factory import PlannerFactory
-from neural_field_optimal_planner.plotting_utils import prepare_figure, plot_planner_data
+from neural_field_optimal_planner.plotting_utils import prepare_figure, plot_planner_data, plot_nerf_opt_planner
 from neural_field_optimal_planner.test_environment_builder import TestEnvironmentBuilder
 
 torch.random.manual_seed(100)
@@ -31,4 +31,5 @@ for i in range(1000):
     fig.clear()
     prepare_figure(trajectory_boundaries)
     plot_planner_data(trajectory, collision_model, trajectory_boundaries, obstacle_points, device=device)
+    plot_nerf_opt_planner(planner)
     plt.pause(0.01)

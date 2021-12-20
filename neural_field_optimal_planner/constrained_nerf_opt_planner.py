@@ -9,7 +9,8 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
     def __init__(self, trajectory, collision_model, collision_checker, collision_optimizer, trajectory_optimizer,
                  trajectory_random_offset, collision_weight, velocity_hessian_weight, init_collision_iteration=100,
                  init_collision_points=100, reparametrize_trajectory_freq=10, optimize_collision_model_freq=1,
-                 random_field_points=10, angle_weight=0.5, constraint_deltas_weight=20, multipliers_lr=1e-1):
+                 random_field_points=10, angle_weight=0.5, constraint_deltas_weight=20, multipliers_lr=1e-1,
+                 boundary_weight=1):
         super().__init__(trajectory, collision_model, collision_checker, collision_optimizer, trajectory_optimizer,
                          trajectory_random_offset, collision_weight, velocity_hessian_weight, init_collision_iteration,
                          init_collision_points, reparametrize_trajectory_freq, optimize_collision_model_freq,
@@ -22,10 +23,13 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         self._constraint_multipliers.grad = None
         self._constraint_delta_weight = constraint_deltas_weight
         self._multipliers_lr = multipliers_lr
+        self._boundary_weight = boundary_weight
 
-    def _random_intermediate_positions(self):
-        t = torch.tensor(np.random.rand(self._trajectory.shape[0] - 1).astype(np.float32), device=self._device)[:, None]
-        return self._trajectory[1:, :2] * (1 - t) + self._trajectory[:-1, :2] * t
+    def _random_intermediate_positions(self, trajectory=None):
+        if trajectory is None:
+            trajectory = self._trajectory
+        t = torch.tensor(np.random.rand(trajectory.shape[0] - 1).astype(np.float32), device=self._device)[:, None]
+        return trajectory[1:, :2] * (1 - t) + trajectory[:-1, :2] * t
 
     def _init_trajectory(self):
         super()._init_trajectory()
@@ -71,7 +75,7 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         constraint_deltas = self.non_holonomic_constraint_deltas()
         loss = self.distance_loss() + self.trajectory_collision_loss(collision_positions) * self._collision_weight + \
                torch.sum(self._constraint_multipliers * constraint_deltas) + torch.sum(constraint_deltas ** 2) * \
-               self._constraint_delta_weight
+               self._constraint_delta_weight + self.boundary_loss() * self._boundary_weight
         return loss
 
     def _optimize_trajectory(self):
