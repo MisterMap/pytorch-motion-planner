@@ -22,10 +22,10 @@ class PlannerFactory(object):
         device = "cpu"
         # collision_model = ONF(0, 0.5, use_cos=True, use_normal_init=False, bias=False).to(device)
         collision_model = ONF(1.5, 1).to(device)
-        collision_optimizer = torch.optim.Adam(collision_model.parameters(), 2e-3, betas=(0.9, 0.9))
+        collision_optimizer = torch.optim.Adam(collision_model.parameters(), 1e-3, betas=(0.9, 0.9))
         trajectory = torch.zeros(100, 3, requires_grad=True, device=device)
         trajectory_optimizer = torch.optim.Adam([trajectory], 1e-2, betas=(0.9, 0.999))
         return ConstrainedNERFOptPlanner(trajectory, collision_model, collision_checker, collision_optimizer,
                                          trajectory_optimizer, trajectory_random_offset=0.02, collision_weight=1,
                                          velocity_hessian_weight=0.5, random_field_points=10,
-                                         init_collision_iteration=0, constraint_deltas_weight=2, multipliers_lr=0.01)
+                                         init_collision_iteration=0, constraint_deltas_weight=0.2, multipliers_lr=0.001)

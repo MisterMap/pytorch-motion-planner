@@ -5,6 +5,7 @@ from torch import nn
 
 from .nerf_opt_planner import NERFOptPlanner
 from .torch_math import wrap_angle
+from .utils.position2 import Position2
 
 
 class ConstrainedNERFOptPlanner(NERFOptPlanner):
@@ -30,12 +31,7 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         self._collision_multipliers = torch.zeros(self._trajectory.shape[0], device=self._device,
                                                   requires_grad=True)
         self._collision_multipliers.grad = None
-
-    def _random_intermediate_positions(self, trajectory=None):
-        if trajectory is None:
-            trajectory = self._trajectory
-        t = torch.tensor(np.random.rand(trajectory.shape[0] - 1).astype(np.float32), device=self._device)[:, None]
-        return trajectory[1:, :2] * (1 - t) + trajectory[:-1, :2] * t
+        self._collision_positions = np.zeros((0, 3))
 
     def _init_trajectory(self):
         super()._init_trajectory()
@@ -47,6 +43,44 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
     def _calculate_distances(self):
         full_trajectory = self.full_trajectory()
         return torch.norm(full_trajectory[1:, :2] - full_trajectory[:-1, :2], dim=1)
+
+    def _calculate_truth_collision(self, positions):
+        return self._collision_checker.check_collision(Position2.from_vec(positions))
+
+    def _calculate_predicted_collision(self, positions):
+        return self._collision_model(torch.tensor(positions[:, :2].astype(np.float32), device=self._device))
+
+    def _offset_positions(self, positions, offset):
+        positions = positions.copy()
+        positions[:, :2] = positions[:, :2] + np.random.randn(positions.shape[0], 2) * offset
+        return positions
+
+    def _optimize_trajectory(self):
+        super()._optimize_trajectory()
+        self._constraint_multipliers.data.add_(self._multipliers_lr * self._constraint_multipliers.grad.detach())
+        self._constraint_multipliers.grad = None
+        self._collision_multipliers.data.add_(
+            self._collision_multipliers_lr * self._collision_multipliers.grad.detach())
+        with torch.no_grad():
+            self._collision_multipliers.data = torch.where(self._collision_multipliers > 0, self._collision_multipliers,
+                                                           torch.zeros_like(self._collision_multipliers))
+        self._collision_multipliers.grad = None
+
+    def trajectory_loss(self):
+        t = torch.tensor(np.random.rand(self._trajectory.shape[0] - 1).astype(np.float32), device=self._device)[:, None]
+        collision_positions = self._trajectory[1:, :2] * (1 - t) + self._trajectory[:-1, :2] * t
+        collision_multipliers = self._collision_multipliers[1:] * (
+                1 - t[:, 0]) + self._collision_multipliers[:-1] * t[:, 0]
+        collision_probabilities = self._collision_model(collision_positions)
+        softplus_collision_probabilities = nn.functional.softplus(collision_probabilities)
+        collision_multipliers_loss = torch.sum(collision_multipliers * torch.tanh(collision_probabilities[:, 0]))
+        collision_loss = torch.sum(softplus_collision_probabilities)
+
+        constraint_deltas = self.non_holonomic_constraint_deltas()
+        loss = self.distance_loss() + collision_loss * self._collision_weight + torch.sum(
+            self._constraint_multipliers * constraint_deltas) + torch.sum(constraint_deltas ** 2) * \
+               self._constraint_delta_weight + self.boundary_loss() * self._boundary_weight + collision_multipliers_loss
+        return loss
 
     def non_holonomic_constraint_deltas(self):
         full_trajectory = self.full_trajectory()
@@ -74,39 +108,8 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         angle_sum = torch.sum(delta_angles.detach()) - full_trajectory[-1, 2] + full_trajectory[0, 2]
         delta[-1, 2] += angle_sum
         delta[:, 2] *= self._angle_weight
-        return torch.sum(delta ** 2)
-
-    def trajectory_loss(self):
-        t = torch.tensor(np.random.rand(self._trajectory.shape[0] - 1).astype(np.float32), device=self._device)[:, None]
-        collision_positions = self._trajectory[1:, :2] * (1 - t) + self._trajectory[:-1, :2] * t
-        collision_multipliers = self._collision_multipliers[1:] * (1 - t[:, 0]) + self._collision_multipliers[:-1] * t[
-        :, 0]
-        collision_probabilities = self._collision_model(collision_positions)
-        softplus_collision_probabilities = nn.functional.softplus(collision_probabilities)
-        collision_multipliers_loss = torch.sum(collision_multipliers * torch.tanh(collision_probabilities[:, 0]))
-        collision_loss = torch.sum(softplus_collision_probabilities)
-
-        constraint_deltas = self.non_holonomic_constraint_deltas()
-        loss = self.distance_loss() + collision_loss * self._collision_weight + \
-               torch.sum(self._constraint_multipliers * constraint_deltas) + torch.sum(constraint_deltas ** 2) * \
-               self._constraint_delta_weight + self.boundary_loss() * self._boundary_weight + collision_multipliers_loss
-        return loss
-
-    def trajectory_collision_loss(self, collision_positions):
-        collision_probabilities = self._collision_model(collision_positions)
-        collision_probabilities = nn.functional.softplus(collision_probabilities)
-        return torch.sum(collision_probabilities)
-
-    def _optimize_trajectory(self):
-        super()._optimize_trajectory()
-        self._constraint_multipliers.data.add_(self._multipliers_lr * self._constraint_multipliers.grad.detach())
-        self._constraint_multipliers.grad = None
-        self._collision_multipliers.data.add_(
-            self._collision_multipliers_lr * self._collision_multipliers.grad.detach())
-        with torch.no_grad():
-            self._collision_multipliers.data = torch.where(self._collision_multipliers > 0, self._collision_multipliers,
-                                                           torch.zeros_like(self._collision_multipliers))
-        self._collision_multipliers.grad = None
+        weight = torch.sum(delta ** 2).detach()
+        return torch.sum(delta ** 2) / weight
 
     def reparametrize_trajectory(self):
         full_trajectory = self.full_trajectory()
@@ -146,3 +149,8 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
             [torch.full((1,), constraint_multipliers[0].item(), device=self._device),
                 (constraint_multipliers[:-1] + constraint_multipliers[1:]) / 2,
                 torch.full((1,), constraint_multipliers[-1].item(), device=self._device)])
+
+    def _sample_random_field_points(self, points_count):
+        random_points = super()._sample_random_field_points(points_count)
+        angles = np.random.rand(points_count, 1) * 2 * np.pi
+        return np.concatenate([random_points, angles], axis=1)

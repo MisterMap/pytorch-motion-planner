@@ -53,7 +53,7 @@ class GoalPlannerAdapter(object):
             path = [Position2.from_vec([x[0], x[1], 0]) for x in path]
         else:
             path = [Position2.from_vec([x[0], x[1], x[2]]) for x in path]
-        self._publish_path(path)
+        self._publish_path(path[1:])
 
     def _publish_path(self, path):
         message = nav_msgs.msg.Path()

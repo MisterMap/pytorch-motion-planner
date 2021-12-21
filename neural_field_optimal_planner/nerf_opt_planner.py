@@ -10,7 +10,7 @@ class NERFOptPlanner(ContinuousPlanner):
     def __init__(self, trajectory, collision_model, collision_checker, collision_optimizer, trajectory_optimizer,
                  trajectory_random_offset, collision_weight, velocity_hessian_weight, init_collision_iteration=100,
                  init_collision_points=100, reparametrize_trajectory_freq=10, optimize_collision_model_freq=1,
-                 random_field_points=10, collision_loss_koef=1):
+                 random_field_points=10, collision_loss_koef=1, course_random_offset=1.5, collision_point_count=100):
         torch.autograd.set_detect_anomaly(True)
         self._trajectory = trajectory
         device = self._trajectory.device
@@ -23,7 +23,7 @@ class NERFOptPlanner(ContinuousPlanner):
         self._trajectory_optimizer = trajectory_optimizer
         self._collision_loss_function = nn.BCEWithLogitsLoss()
         self._random_sample_border = (0, 0, 0, 0)
-        self._trajectory_random_offset = trajectory_random_offset
+        self._fine_random_offset = trajectory_random_offset
         self._collision_weight = collision_weight
         self._inv_hessian = self._calculate_inv_hessian(self._trajectory.shape[0], velocity_hessian_weight)
         self._init_collision_iteration = init_collision_iteration
@@ -33,9 +33,11 @@ class NERFOptPlanner(ContinuousPlanner):
         self._random_field_points = random_field_points
         self._step_count = 0
         self._collision_loss_koef = collision_loss_koef
-        self._sample_trajectory = None
+        self._previous_trajectory = None
         self._collision_positions = np.zeros((0, 2))
         self._collision_positions_times = np.zeros(0)
+        self._course_random_offset = course_random_offset
+        self._collision_point_count = collision_point_count
 
     def _calculate_inv_hessian(self, point_count, velocity_hessian_weight):
         hessian = velocity_hessian_weight * self._calculate_velocity_hessian(point_count) + np.eye(point_count)
@@ -66,48 +68,58 @@ class NERFOptPlanner(ContinuousPlanner):
 
     def _optimize_collision_model(self, positions=None):
         if positions is None:
-            if self._sample_trajectory is None:
-                self._sample_trajectory = self._trajectory.detach().clone()
-            positions = self._sample_collision_checker_points(self._sample_trajectory)
-            self._sample_trajectory = self._trajectory.detach().clone()
+            if self._previous_trajectory is None:
+                self._previous_trajectory = self._trajectory.detach().clone()
+            positions = self._sample_collision_checker_points(self._previous_trajectory)
+            self._previous_trajectory = self._trajectory.detach().clone()
         self._collision_model.requires_grad_(True)
         self._collision_optimizer.zero_grad()
-        collision_state = self._collision_checker.check_collision(positions)
-        predicted_collision = self._collision_model(torch.tensor(positions.astype(np.float32), device=self._device))
-        truth_collision = torch.tensor(collision_state.astype(np.float32)[:, None], device=self._device)
-        # loss = torch.sum(torch.where(truth_collision > 0.5, predicted_collision, -predicted_collision))
+        predicted_collision = self._calculate_predicted_collision(positions)
+        truth_collision = self._calculate_truth_collision(positions)
+        truth_collision = torch.tensor(truth_collision.astype(np.float32)[:, None], device=self._device)
         loss = self._collision_loss_function(predicted_collision, truth_collision)
         loss.backward()
         self._collision_optimizer.step()
 
+    def _calculate_truth_collision(self, positions):
+        return self._collision_checker.check_collision(positions)
+
+    def _calculate_predicted_collision(self, positions):
+        return self._collision_model(torch.tensor(positions.astype(np.float32), device=self._device))
+
     def _sample_collision_checker_points(self, trajectory=None):
         positions = self._random_intermediate_positions(trajectory).detach().cpu().numpy()
-        positions1 = positions + np.random.randn(positions.shape[0], 2) * 1.5
-        positions = positions + np.random.randn(positions.shape[0], 2) * self._trajectory_random_offset
-        times = np.concatenate([self._collision_positions_times, np.zeros(len(positions))], axis=0)
-        self._collision_positions, self._collision_positions_times = self._resample_collision_positions(
-            np.concatenate([self._collision_positions, positions], axis=0), times, 100)
+        course_positions = self._offset_positions(positions, self._course_random_offset)
+        fine_positions = self._offset_positions(positions, self._fine_random_offset)
+        times = np.concatenate([self._collision_positions_times, np.zeros(len(fine_positions))], axis=0)
+        positions = np.concatenate([self._collision_positions, fine_positions], axis=0)
+        self._collision_positions, self._collision_positions_times = self._resample_collision_positions(positions,
+                                                                                                        times)
         return np.concatenate(
-            [positions1, self._collision_positions, self._sample_random_field_points(self._random_field_points)],
+            [course_positions, self._collision_positions, self._sample_random_field_points(self._random_field_points)],
             axis=0)
-
-    def _resample_collision_positions(self, positions, times, point_count):
-        with torch.no_grad():
-            predicted_collision = self._collision_model(torch.tensor(positions.astype(np.float32), device=self._device))
-            weights = torch.sigmoid(predicted_collision).detach().cpu().numpy()[:, 0]
-            weights = weights * np.exp(-times * 0.03)
-            weights = weights / np.sum(weights)
-        if len(positions) < point_count:
-            return positions, times
-        indices = np.random.choice(len(positions), point_count, replace=False, p=weights)
-        times = times + 1
-        return positions[indices], times[indices]
 
     def _random_intermediate_positions(self, trajectory=None):
         if trajectory is None:
             trajectory = self._trajectory
         t = torch.tensor(np.random.rand(trajectory.shape[0] - 1).astype(np.float32), device=self._device)[:, None]
         return trajectory[1:] * (1 - t) + trajectory[:-1] * t
+
+    def _offset_positions(self, positions, offset):
+        return positions + np.random.randn(positions.shape[0], 2) * offset
+
+    def _resample_collision_positions(self, positions, times):
+        with torch.no_grad():
+            predicted_collision = self._calculate_predicted_collision(positions)
+            weights = torch.sigmoid(predicted_collision).detach().cpu().numpy()[:, 0]
+            weights = weights * np.exp(-times * 0.03)
+            weights = weights / np.sum(weights)
+        if len(positions) < self._collision_point_count:
+            return positions, times
+        replace = np.count_nonzero(weights > 1e-6) < self._collision_point_count
+        indices = np.random.choice(len(positions), self._collision_point_count, replace=replace, p=weights)
+        times = times + 1
+        return positions[indices], times[indices]
 
     def _sample_random_field_points(self, points_count):
         random_points = np.random.rand(points_count, 2)

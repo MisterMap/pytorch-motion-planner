@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from neural_field_optimal_planner.collision_checker import CollisionChecker
+from neural_field_optimal_planner.collision_checker import CircleDirectedCollisionChecker, RectangleCollisionChecker
 from neural_field_optimal_planner.planner_factory import PlannerFactory
 from neural_field_optimal_planner.plotting_utils import prepare_figure, plot_planner_data, plot_nerf_opt_planner
 from neural_field_optimal_planner.test_environment_builder import TestEnvironmentBuilder
@@ -12,7 +12,8 @@ np.random.seed(400)
 
 test_environment = TestEnvironmentBuilder().make_test_environment_with_angles()
 obstacle_points = test_environment.obstacle_points
-collision_checker = CollisionChecker(0.3, (0, 3, 0, 3))
+collision_checker = CircleDirectedCollisionChecker(0.3, (0, 3, 0, 3))
+# collision_checker = RectangleCollisionChecker((-0.2, 0.2, -0.2, 0.2), (0, 3, 0, 3))
 collision_checker.update_obstacle_points(test_environment.obstacle_points)
 
 planner = PlannerFactory.make_constrained_onf_planner(collision_checker)

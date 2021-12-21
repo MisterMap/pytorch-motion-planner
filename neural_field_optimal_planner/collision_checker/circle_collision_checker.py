@@ -1,6 +1,6 @@
 import numpy as np
 
-from .collision_checker import CollisionChecker
+from neural_field_optimal_planner.collision_checker import CollisionChecker
 
 
 class CircleCollisionChecker(CollisionChecker):

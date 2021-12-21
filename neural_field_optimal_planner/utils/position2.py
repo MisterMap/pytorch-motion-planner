@@ -27,7 +27,9 @@ class Position2(object):
 
     @classmethod
     def from_vec(cls, vec):
-        return cls(vec[0], vec[1], vec[2])
+        if isinstance(vec, list) or len(vec.shape) == 1:
+            return cls(vec[0], vec[1], vec[2])
+        return cls(vec[:, 0], vec[:, 1], vec[:, 2])
 
     def as_vec(self):
         return np.array([self._x, self._y, self._angle]).T
