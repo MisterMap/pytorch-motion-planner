@@ -94,11 +94,9 @@ class NERFOptPlanner(ContinuousPlanner):
     def _resample_collision_positions(self, positions, times, point_count):
         with torch.no_grad():
             predicted_collision = self._collision_model(torch.tensor(positions.astype(np.float32), device=self._device))
-            # weights = torch.sigmoid(predicted_collision).detach().cpu().numpy()[:, 0]
-            # weights = weights * np.exp(-times * 0.03)
-            # weights = weights / np.sum(weights)
-            collision_times = torch.tensor(times.astype(np.float32), device=self._device)
-            weights = torch.softmax(predicted_collision - collision_times[:, None] * 0.1, dim=0).detach().cpu().numpy()[:, 0]
+            weights = torch.sigmoid(predicted_collision).detach().cpu().numpy()[:, 0]
+            weights = weights * np.exp(-times * 0.03)
+            weights = weights / np.sum(weights)
         if len(positions) < point_count:
             return positions, times
         indices = np.random.choice(len(positions), point_count, replace=False, p=weights)

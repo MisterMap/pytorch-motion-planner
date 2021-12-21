@@ -23,7 +23,7 @@ class TestEnvironmentBuilder(object):
 
     @staticmethod
     def make_test_environment_with_angles():
-        goal_point = np.array([2.5, 2.5, 0], dtype=np.float32)
+        goal_point = np.array([2.5, 1.5, 0], dtype=np.float32)
         start_point = np.array([0.5, 0.5, 0], dtype=np.float32)
         trajectory_boundaries = (-0.1, 3.1, -0.1, 3.1)
         return TestEnvironment(start_point, goal_point, trajectory_boundaries,

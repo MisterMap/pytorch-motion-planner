@@ -8,7 +8,7 @@ from neural_field_optimal_planner.plotting_utils import prepare_figure, plot_pla
 from neural_field_optimal_planner.test_environment_builder import TestEnvironmentBuilder
 
 torch.random.manual_seed(100)
-np.random.seed(100)
+np.random.seed(400)
 
 test_environment = TestEnvironmentBuilder().make_test_environment_with_angles()
 obstacle_points = test_environment.obstacle_points
