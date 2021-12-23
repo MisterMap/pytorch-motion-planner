@@ -130,8 +130,10 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         denominator = cdf_above - cdf_bellow
         denominator = torch.where(denominator < 1e-5, torch.ones_like(denominator) * 1e-5, denominator)
         t = (uniform_samples - cdf_bellow) / denominator
-        trajectory = (1 - t[:, None]) * trajectory_bellow + t[:, None] * trajectory_above
-        self._trajectory.data = trajectory
+        trajectory = (1 - t[:, None]) * trajectory_bellow[:, :2] + t[:, None] * trajectory_above[:, :2]
+        self._trajectory.data[:, :2] = trajectory
+        self._trajectory.data[:, 2] = trajectory_bellow[:, 2] + t * wrap_angle(
+            trajectory_above[:, 2] - trajectory_bellow[:, 2])
         collision_multipliers = torch.cat([torch.zeros(1, device=self._device), self._collision_multipliers,
                                               torch.zeros(1, device=self._device)])
         collision_multipliers_above = torch.gather(collision_multipliers, 0, index_above[:, 0])
@@ -154,3 +156,21 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         random_points = super()._sample_random_field_points(points_count)
         angles = np.random.rand(points_count, 1) * 2 * np.pi
         return np.concatenate([random_points, angles], axis=1)
+
+    def update_goal_point(self, goal_point):
+        self._goal_point = torch.tensor(goal_point.astype(np.float32), device=self._device)[None]
+        with torch.no_grad():
+            delta = torch.sum((self._trajectory[:, :2] - self._goal_point[:, :2]) ** 2, dim=1)
+            min_index = min(torch.argmin(delta) + 1, self._trajectory.shape[0])
+            self._trajectory.data[min_index:] = self._goal_point
+            self.reparametrize_trajectory()
+        self._step_count = 0
+
+    def update_start_point(self, start_point):
+        self._start_point = torch.tensor(start_point.astype(np.float32), device=self._device)[None]
+        with torch.no_grad():
+            delta = torch.sum((self._trajectory[:, :2] - self._start_point[:, :2]) ** 2, dim=1)
+            min_index = min(torch.argmin(delta) + 1, self._trajectory.shape[0])
+            self._trajectory.data[:min_index] = self._start_point
+            self.reparametrize_trajectory()
+        self._step_count = 0

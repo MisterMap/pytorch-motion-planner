@@ -1,10 +1,12 @@
 from .collision_checker_adapter import CollisionCheckerAdapter
 from .goal_planner_adapter import GoalPlannerAdapter
 from .map_adapter import MapAdapter
+from .path_postprocessor import PathPostprocessor
 from .robot_state import RobotState
 from .transform_receiver_factory import TransformReceiverFactory
 from ..collision_checker import CircleDirectedCollisionChecker, RectangleCollisionChecker
 from ..planner_factory import PlannerFactory
+from .planner_result_visualizer import PlannerResultVisualizer
 
 
 class GoalPlannerAdapterFactory(object):
@@ -20,5 +22,8 @@ class GoalPlannerAdapterFactory(object):
                                                             map_adapter=map_adapter)
         # planner = PlannerFactory.make_onf_planner(collision_checker_adapter)
         planner = PlannerFactory.make_constrained_onf_planner(collision_checker_adapter)
+        result_visualizer = PlannerResultVisualizer("pytorch_motion_planner_visualization")
+        path_postprocessor = PathPostprocessor()
         return GoalPlannerAdapter(planner, map_adapter, robot_state, goal_topic_name="/move_base_simple/goal",
-                                  path_topic_name="/path", planning_timeout=0.1, planner_rate=10, is_point=False)
+                                  path_topic_name="/path", planning_timeout=0.1, planner_rate=10, is_point=False,
+                                  result_visualizer=result_visualizer, path_postprocessor=path_postprocessor)

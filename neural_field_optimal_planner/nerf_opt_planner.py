@@ -112,7 +112,7 @@ class NERFOptPlanner(ContinuousPlanner):
         with torch.no_grad():
             predicted_collision = self._calculate_predicted_collision(positions)
             weights = torch.sigmoid(predicted_collision).detach().cpu().numpy()[:, 0]
-            weights = weights * np.exp(-times * 0.03)
+            weights = weights * np.exp(-times * 0.03) + 1e-6
             weights = weights / np.sum(weights)
         if len(positions) < self._collision_point_count:
             return positions, times

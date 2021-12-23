@@ -41,6 +41,9 @@ class Position2(object):
         angle = np.array([x_.rotation for x_ in positions])
         return cls(x, y, angle)
 
+    def as_array(self):
+        return [self.__class__(self._x[i], self._y[i], self._angle[i]) for i in range(len(self))]
+
     @classmethod
     def from_ros_pose(cls, message):
         return cls(message.position.x, message.position.y, cls._angle_from_ros_quaternion(message.orientation))
@@ -80,12 +83,12 @@ class Position2(object):
         x1 = other.x * np.cos(self._angle) - other.y * np.sin(self._angle) + self._x
         y1 = other.x * np.sin(self._angle) + other.y * np.cos(self._angle) + self._y
         a1 = (other.rotation + self._angle + np.pi) % (2 * np.pi) - np.pi
-        return self.from_vec([x1, y1, a1])
+        return self.__class__(x1, y1, a1)
 
     def inv(self):
         x = -self.x * np.cos(self.rotation) - self.y * np.sin(self.rotation)
         y = self.x * np.sin(self.rotation) - self.y * np.cos(self.rotation)
-        return self.from_vec([x, y, -self.rotation])
+        return self.__class__(x, y, -self.rotation)
 
     def apply(self, points):
         x, y = points.T
