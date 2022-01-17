@@ -1,6 +1,7 @@
 # Pacharm settings
 .idea/
 build
+*cmake-build*
 
 # Venv
 venv/
