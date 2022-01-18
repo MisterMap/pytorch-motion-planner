@@ -19,7 +19,7 @@ class PlannerFactory(object):
 
     @staticmethod
     def make_constrained_onf_planner(collision_checker):
-        device = "cpu"
+        device = "cuda"
         # collision_model = ONF(0, 0.5, use_cos=True, use_normal_init=False, bias=False).to(device)
         collision_model = ONF(1.5, 1).to(device)
         collision_optimizer = torch.optim.Adam(collision_model.parameters(), 1e-3, betas=(0.9, 0.9))
