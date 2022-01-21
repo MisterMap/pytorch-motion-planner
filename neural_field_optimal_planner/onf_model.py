@@ -12,9 +12,9 @@ class ONF(nn.Module):
             nn.ReLU(),
             nn.Linear(100, 100),
             nn.ReLU(),
-            nn.Linear(100, 100),
-            nn.ReLU(),
-            nn.Linear(100, 1)
+        ])
+        self.mlp2 = nn.Sequential(*[
+            nn.Linear(100 + feature_dim, 1)
         ])
         self._mean = mean
         self._sigma = sigma
@@ -29,5 +29,8 @@ class ONF(nn.Module):
             x = torch.cat([torch.sin(x[:, :100]), torch.cos(x[:, 100:])], dim=1)
         else:
             x = torch.sin(x)
-        x = self.mlp(x)
+        input_x = x
+        x = self.mlp(input_x)
+        x = torch.cat([x, input_x], dim=1)
+        x = self.mlp2(x)
         return x

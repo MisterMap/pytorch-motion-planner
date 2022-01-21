@@ -27,7 +27,9 @@ BenchmarkAdapter::BenchmarkAdapter(PlannerSettings::GlobalSettings &settings) {
 void BenchmarkAdapter::loadMovingAIScenarios(PlannerSettings::GlobalSettings &settings) {
     ScenarioLoader scenarioLoader;
     scenarioLoader.load(settings.benchmark.moving_ai.scenario);
-    auto &scenario = scenarioLoader.scenarios()[0];
+    const auto n = scenarioLoader.scenarios().size();
+    std::size_t id = (global::settings.benchmark.moving_ai.start + n) % n;
+    auto &scenario = scenarioLoader.scenarios()[id];
     settings.environment = GridMaze::createFromMovingAiScenario(scenario);
     settings.env.collision.initializeCollisionModel();
 }
@@ -50,6 +52,7 @@ BenchmarkAdapter::BenchmarkAdapter(const std::string &settingFile) {
     global::settings.steer.initializeSteering();
     mBenchmarkEnvironment = global::settings.environment;
     Log::instantiateRun();
+    stopwatch.start();
 }
 
 std::tuple<double, double, double, double> BenchmarkAdapter::bounds() {
@@ -62,9 +65,9 @@ std::tuple<double, double, double, double> BenchmarkAdapter::bounds() {
     };
 }
 
-PathStatistics BenchmarkAdapter::evaluate(const ompl::geometric::PathGeometric &path, const std::string &name) {
+PathStatistics BenchmarkAdapter::evaluate(ompl::geometric::PathGeometric &path, const std::string &name) {
     PathStatistics stats(name);
-//    stats.planning_time = planningTime();
+    stats.planning_time = planningTime();
     stats.collision_time = global::settings.environment->elapsedCollisionTime();
     stats.steering_time = global::settings.ompl.steering_timer.elapsed();
     stats.planner = name;
@@ -75,7 +78,7 @@ PathStatistics BenchmarkAdapter::evaluate(const ompl::geometric::PathGeometric &
     }
     stats.path_found = true;
     auto solution = PlannerUtils::interpolated(path);
-//    stats.path_collides = isValid(solution, stats.collisions);
+    stats.path_collides = !isValid(solution, stats.collisions);
     stats.exact_goal_path = Point(solution.getStates().back()).distance(
             global::settings.environment->goal()) <= global::settings.exact_goal_radius;
 
@@ -98,6 +101,7 @@ PathStatistics BenchmarkAdapter::evaluate(const ompl::geometric::PathGeometric &
 }
 
 void BenchmarkAdapter::evaluateAndSaveResult(const std::vector<Position> &resultPath, const std::string &name) {
+    stopwatch.stop();
     auto omplResultPath = omplPathFromPositions(resultPath);
     nlohmann::json info;
     mBenchmarkEnvironment->to_json(info["environment"]);
@@ -146,5 +150,17 @@ std::vector<bool> BenchmarkAdapter::collides_positions(const std::vector<Positio
         result[i] = !mBenchmarkEnvironment->checkValidity(state.get());
     }
     return result;
+}
+
+bool BenchmarkAdapter::isValid(ompl::geometric::PathGeometric &path, std::vector<Point> &collisions) {
+    collisions.clear();
+    for (const auto *state : path.getStates())
+        if (!mBenchmarkEnvironment->checkValidity(state))
+            collisions.emplace_back(state);
+    return collisions.empty();
+}
+
+double BenchmarkAdapter::planningTime() {
+    return stopwatch.elapsed();
 }
 

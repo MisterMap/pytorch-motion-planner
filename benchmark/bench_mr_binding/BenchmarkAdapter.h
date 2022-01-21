@@ -16,6 +16,12 @@ class BenchmarkAdapter {
 
     static ompl::geometric::PathGeometric omplPathFromPositions(const std::vector<Position> &resultPath);
 
+    double planningTime();
+
+    bool isValid(ompl::geometric::PathGeometric &path, std::vector<Point> &collisions);
+
+    Stopwatch stopwatch;
+
 public:
     explicit BenchmarkAdapter(PlannerSettings::GlobalSettings &settings);
 
@@ -27,7 +33,7 @@ public:
 
     std::tuple<double, double, double, double> bounds();
 
-    static PathStatistics evaluate(const ompl::geometric::PathGeometric &path, const std::string &name);
+    PathStatistics evaluate(ompl::geometric::PathGeometric &path, const std::string &name);
 
     void evaluateAndSaveResult(const std::vector<Position> &resultPath, const std::string &name);
 
