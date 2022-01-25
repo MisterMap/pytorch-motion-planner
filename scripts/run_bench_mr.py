@@ -36,7 +36,7 @@ trajectory_boundaries = benchmark.bounds()
 planner.init(start_point, goal_point, trajectory_boundaries)
 device = planner._device
 collision_model = planner._collision_model
-is_show = True
+is_show = False
 fig = None
 if is_show:
     fig = plt.figure(dpi=200)

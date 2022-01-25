@@ -31,6 +31,7 @@ mlruns
 *.svg
 *.depth
 *.reg
+*.pdf
 
 # Features
 *.desc
@@ -47,6 +48,8 @@ mlruns
 *.txt
 !CMakeLists.txt
 *.db
+*.json
+*.log
 
 # Python models
 *.npy
