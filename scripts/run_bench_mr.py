@@ -4,16 +4,8 @@ import torch
 from matplotlib import pyplot as plt
 import argparse
 
-import sys
-
-sys.path.append("/home/mikhail/research/pytorch-motion-planner")
-sys.path.append("/home/mikhail/research/pytorch-motion-planner/cmake-build-debug/benchmark")
-sys.path.append("/opt/ros/noetic/lib/python3/dist-packages")
-
-from neural_field_optimal_planner.collision_checker import CircleDirectedCollisionChecker, RectangleCollisionChecker
 from neural_field_optimal_planner.planner_factory import PlannerFactory
 from neural_field_optimal_planner.plotting_utils import prepare_figure, plot_planner_data, plot_nerf_opt_planner
-from neural_field_optimal_planner.test_environment_builder import TestEnvironmentBuilder
 from neural_field_optimal_planner.benchmark_adapter import BenchmarkAdapter
 from neural_field_optimal_planner.benchmark_adapter.benchmark_collision_checker import BenchmarkCollisionChecker
 
@@ -22,6 +14,7 @@ np.random.seed(400)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("settings")
+parser.add_argument("--show", default=False)
 args = parser.parse_args()
 
 print("start with config", args.settings)
@@ -36,7 +29,7 @@ trajectory_boundaries = benchmark.bounds()
 planner.init(start_point, goal_point, trajectory_boundaries)
 device = planner._device
 collision_model = planner._collision_model
-is_show = False
+is_show = args.show
 fig = None
 if is_show:
     fig = plt.figure(dpi=200)

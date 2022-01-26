@@ -23,7 +23,7 @@ link_directories(${Boost_LIBRARY_DIRS})
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS bench_mr_binding/*.h)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS bench_mr_binding/*.cpp)
 
-set(BENCH_MR_DIR /home/mikhail/research/bench-mr)
+set(BENCH_MR_DIR third_party/bench-mr)
 include_directories(${BENCH_MR_DIR}/src)
 include_directories(${BENCH_MR_DIR}/third_party/chomp)
 include_directories(${BENCH_MR_DIR}/third_party/params/include)
@@ -34,9 +34,6 @@ link_directories(${BENCH_MR_DIR}/build/third_party/steering_functions)
 set(EXTRA_LIB ${EXTRA_LIB} ${SBPL_LIBRARIES} ${Boost_LIBRARIES} ${OMPL_LIBRARIES} chomp mzcommon steering_functions)
 set(EXTRA_LIB ${EXTRA_LIB} mpb_core mpb_steering mpb_planners mpb_smoothers)
 
-add_executable(test ${SOURCES})
-target_link_libraries(test ${EXTRA_LIB} ${EXTRA_LIB})
-
 set(PYTHON_MODULE_NAME pybench_mr)
 
 include_directories(
@@ -46,5 +43,7 @@ include_directories(
 
 add_library(${PYTHON_MODULE_NAME} SHARED ${SOURCES})
 set_target_properties(${PYTHON_MODULE_NAME} PROPERTIES PREFIX "" SUFFIX ".so")
-target_link_libraries(${PYTHON_MODULE_NAME} ${EXTRA_LIB} ${SBPL_LIBRARIES} ${Boost_LIBRARIES} ${OMPL_LIBRARIES} chomp.a mzcommon.a steering_functions.a mpb_core.a mpb_steering.a mpb_planners.a mpb_smoothers.a)
+target_link_libraries(${PYTHON_MODULE_NAME} ${EXTRA_LIB} ${SBPL_LIBRARIES} ${Boost_LIBRARIES}
+        ${OMPL_LIBRARIES} chomp.a mzcommon.a steering_functions.a
+        mpb_core.a mpb_steering.a mpb_planners.a mpb_smoothers.a)
 

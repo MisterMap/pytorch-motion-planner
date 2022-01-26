@@ -6,4 +6,4 @@ settings = generate_distutils_setup(
     packages=setuptools.find_packages()
 )
 
-setup(requires=['numpy', 'PyYAML', 'scipy'], **settings)
+setup(requires=['numpy', 'PyYAML', 'scipy', 'pytorch'], **settings)

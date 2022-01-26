@@ -1,4 +1,7 @@
-import geometry_msgs.msg
+try:
+    import geometry_msgs.msg
+except ImportError:
+    print("ROS is not sourced. To enable ROS features, please source it")
 import numpy as np
 from scipy.spatial.transform import Rotation
 

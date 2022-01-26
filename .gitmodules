@@ -1,3 +1,6 @@
 [submodule "benchmark/third_party/pybind11"]
 	path = benchmark/third_party/pybind11
 	url = git://github.com/pybind/pybind11
+[submodule "benchmark/third_party/bench-mr"]
+	path = benchmark/third_party/bench-mr
+	url = https://github.com/MisterMap/bench-mr
