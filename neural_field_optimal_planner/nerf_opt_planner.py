@@ -38,6 +38,8 @@ class NERFOptPlanner(ContinuousPlanner):
         self._collision_positions_times = np.zeros(0)
         self._course_random_offset = course_random_offset
         self._collision_point_count = collision_point_count
+        self.checked_positions = np.zeros((0, 3))
+        self.truth_collision = np.zeros(0, dtype=np.bool)
 
     def _calculate_inv_hessian(self, point_count, velocity_hessian_weight):
         hessian = velocity_hessian_weight * self._calculate_velocity_hessian(point_count) + np.eye(point_count)
@@ -82,7 +84,9 @@ class NERFOptPlanner(ContinuousPlanner):
         self._collision_optimizer.step()
 
     def _calculate_truth_collision(self, positions):
-        return self._collision_checker.check_collision(positions)
+        self.checked_positions = positions.copy()
+        self.truth_collision = self._collision_checker.check_collision(positions)
+        return self.truth_collision
 
     def _calculate_predicted_collision(self, positions):
         return self._collision_model(torch.tensor(positions.astype(np.float32), device=self._device))
