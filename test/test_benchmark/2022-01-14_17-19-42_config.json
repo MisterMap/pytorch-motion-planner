@@ -21,7 +21,7 @@
         "active": false,
         "create_border": true,
         "end": -1,
-        "scenario": "/home/mikhail/research/bench-mr/bin/moving_ai_scenarios/Berlin_0_256.map",
+        "scenario": "benchmark/third_party/bench-mr/bin/moving_ai_scenarios/Berlin_0_256.map",
         "start": -10
       },
       "planning": {
@@ -74,7 +74,7 @@
       "collision": {
         "collision_model": 1,
         "robot_shape": [],
-        "robot_shape_source": "/home/mikhail/research/bench-mr/bin/polygon_mazes/warehouse_robot.svg"
+        "robot_shape_source": "/home/mikhail/research/pytorch-motion-planner/benchmark/third_party/bench-mr/bin/polygon_mazes/warehouse_robot.svg"
       },
       "goal": {
         "theta": -1.58,
@@ -102,7 +102,7 @@
       },
       "polygon": {
         "scaling": 1.0,
-        "source": "/home/mikhail/research/bench-mr/bin/polygon_mazes/warehouse2.svg"
+        "source": "benchmark/third_party/bench-mr/bin/polygon_mazes/warehouse2.svg"
       },
       "start": {
         "theta": -1.58,

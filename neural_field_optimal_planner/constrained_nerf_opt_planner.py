@@ -38,8 +38,10 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         super()._init_trajectory()
         with torch.no_grad():
             trajectory_length = self._trajectory.shape[0] + 2
+            delta_angle = wrap_angle(self._goal_point[0, 2] - self._start_point[0, 2])
+            goal_angle = delta_angle + self._start_point[0, 2]
             self._trajectory[:, 2] = torch.linspace(
-                self._start_point[0, 2], self._goal_point[0, 2], trajectory_length)[1:-1]
+                self._start_point[0, 2], goal_angle, trajectory_length)[1:-1]
 
     def _calculate_distances(self):
         full_trajectory = self.full_trajectory()
@@ -114,8 +116,9 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         angle_sum = torch.sum(delta_angles.detach()) - full_trajectory[-1, 2] + full_trajectory[0, 2]
         delta[-1, 2] += angle_sum
         delta[:, 2] *= self._angle_weight
-        weight = torch.sum(delta ** 2).detach()
-        return torch.sum(delta ** 2) / weight
+        # weight = torch.sum(delta ** 2).detach()
+        # return torch.sum(delta ** 2) / weight
+        return torch.sum(delta ** 2)
 
     def reparametrize_trajectory(self):
         full_trajectory = self.full_trajectory()

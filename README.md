@@ -46,6 +46,9 @@ Constraint loss can be done with Lagrangian multipliers
 
 **Benchmark** 
 - look to https://github.com/robot-motion/bench-mr
+- libpython-dev (for python binding)
+- python-dev (for python binding)
+- python3-tk (for visualization)
 
 # Installation
 

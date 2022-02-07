@@ -20,6 +20,9 @@ find_package(Boost 1.58 REQUIRED COMPONENTS serialization filesystem system prog
 include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
 
+find_package(PythonLibs REQUIRED)
+include_directories(${PYTHON_INCLUDE_DIRS})
+
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS bench_mr_binding/*.h)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS bench_mr_binding/*.cpp)
 
