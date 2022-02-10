@@ -74,7 +74,7 @@
       "collision": {
         "collision_model": 1,
         "robot_shape": [],
-        "robot_shape_source": "/home/mikhail/research/pytorch-motion-planner/benchmark/third_party/bench-mr/bin/polygon_mazes/warehouse_robot.svg"
+        "robot_shape_source": "/home/evgeny/pytorch-motion-planner/benchmark/third_party/bench-mr/bin/polygon_mazes/warehouse_robot.svg"
       },
       "goal": {
         "theta": -1.58,

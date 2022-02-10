@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import rospy
 
 from neural_field_optimal_planner.ros.goal_planner_adapter_factory import GoalPlannerAdapterFactory
