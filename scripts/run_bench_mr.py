@@ -17,7 +17,7 @@ np.random.seed(400)
 
 planner_parameters = AttributeDict(
     device="cpu",
-    trajectory_length=100,
+    trajectory_length=20,
     collision_model=AttributeDict(
         mean=0,
         sigma=3,
@@ -47,10 +47,11 @@ planner_parameters = AttributeDict(
         init_collision_points=100,
         reparametrize_trajectory_freq=10,
         optimize_collision_model_freq=1,
-        angle_weight=5,
+        angle_weight=15,
         angle_offset=0.3,
         boundary_weight=1,
-        collision_multipliers_lr=1e-3
+        collision_multipliers_lr=1e-3,
+        collision_beta=4
     )
 )
 
@@ -77,7 +78,7 @@ fig = None
 if is_show:
     fig = plt.figure(dpi=200)
 
-for i in range(100):
+for i in range(1000):
     planner.step()
     if is_show:
         trajectory = planner.get_path()
@@ -88,4 +89,6 @@ for i in range(100):
         # plot_collision_positions(planner.checked_positions, planner.truth_collision)
         plt.pause(0.01)
 
+# result = np.array([start_point, goal_point])
 benchmark.evaluate_and_save_results(planner.get_path(), "constrained_onf_planner")
+# benchmark.evaluate_and_save_results(result, "constrained_onf_planner")
