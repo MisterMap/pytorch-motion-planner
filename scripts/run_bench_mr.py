@@ -1,4 +1,4 @@
-#! /usr/bin/python3.6
+#! /usr/bin/python3
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
