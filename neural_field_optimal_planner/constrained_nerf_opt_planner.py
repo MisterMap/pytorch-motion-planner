@@ -13,7 +13,7 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
                  trajectory_random_offset, collision_weight, velocity_hessian_weight, init_collision_iteration=100,
                  init_collision_points=100, reparametrize_trajectory_freq=10, optimize_collision_model_freq=1,
                  random_field_points=10, angle_weight=0.5, constraint_deltas_weight=20, multipliers_lr=1e-1,
-                 boundary_weight=1, collision_multipliers_lr=1e-3, angle_offset=0):
+                 boundary_weight=1, collision_multipliers_lr=1e-3, angle_offset=0, collision_beta=1):
         super().__init__(trajectory, collision_model, collision_checker, collision_optimizer, trajectory_optimizer,
                          trajectory_random_offset, collision_weight, velocity_hessian_weight, init_collision_iteration,
                          init_collision_points, reparametrize_trajectory_freq, optimize_collision_model_freq,
@@ -33,6 +33,7 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         self._collision_multipliers.grad = None
         self._collision_positions = np.zeros((0, 3))
         self._angle_offset = angle_offset
+        self._collision_beta = collision_beta
 
     def _init_trajectory(self):
         super()._init_trajectory()
@@ -80,7 +81,7 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         collision_multipliers = self._collision_multipliers[1:] * (
                 1 - t[:, 0]) + self._collision_multipliers[:-1] * t[:, 0]
         collision_probabilities = self._collision_model(collision_positions)
-        softplus_collision_probabilities = nn.functional.softplus(collision_probabilities)
+        softplus_collision_probabilities = nn.functional.softplus(collision_probabilities, self._collision_beta)
         collision_multipliers_loss = torch.sum(collision_multipliers * torch.tanh(collision_probabilities[:, 0]))
         collision_loss = torch.sum(softplus_collision_probabilities)
 
