@@ -181,6 +181,10 @@ class NERFOptPlanner(ContinuousPlanner):
             self._trajectory[:, 1] = torch.linspace(
                 self._start_point[0, 1], self._goal_point[0, 1], trajectory_length)[1:-1]
 
+    def set_trajectory(self, path):
+        with torch.no_grad():
+            self._trajectory[:, :] = torch.tensor(path)
+
     def _init_collision_model(self):
         for i in range(self._init_collision_iteration):
             positions = self._sample_random_field_points(self._init_collision_points)

@@ -18,6 +18,12 @@ class BenchmarkAdapter(object):
         path = [Position(x[0], x[1], x[2]) for x in path]
         return self._benchmark_adapter_impl.evaluateAndSaveResult(path, planner_name)
 
+    def evaluate_and_save_results_smoothing(self, path, path_smoothed, planner_name, smoother_name, time=60.0):
+        path = [Position(x[0], x[1], x[2]) for x in path]
+        path_smoothed = [Position(x[0], x[1], x[2]) for x in path_smoothed]
+        return self._benchmark_adapter_impl.evaluateAndSaveResultSmoothing(path, path_smoothed, planner_name,
+                                                                          smoother_name, time)
+
     def start(self):
         start_position = self._benchmark_adapter_impl.start()
         start_position = Position2(start_position.x, start_position.y, start_position.angle)

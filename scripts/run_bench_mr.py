@@ -43,5 +43,3 @@ for i in range(1000):
         plot_planner_data(trajectory, collision_model, trajectory_boundaries, np.zeros((0, 2)), device=device)
         plot_nerf_opt_planner(planner)
         plt.pause(0.01)
-
-benchmark.evaluate_and_save_results(planner.get_path(), "constrained_onf_planner")

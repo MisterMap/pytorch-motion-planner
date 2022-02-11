@@ -8,17 +8,17 @@
 
 
 class BenchmarkAdapter {
-    std::shared_ptr<Environment> mBenchmarkEnvironment;
+    std::shared_ptr <Environment> mBenchmarkEnvironment;
 
     static void loadMovingAIScenarios(PlannerSettings::GlobalSettings &settings);
 
     static void loadOtherScenarios(PlannerSettings::GlobalSettings &settings);
 
-    static ompl::geometric::PathGeometric omplPathFromPositions(const std::vector<Position> &resultPath);
+    static ompl::geometric::PathGeometric omplPathFromPositions(const std::vector <Position> &resultPath);
 
     double planningTime();
 
-    bool isValid(ompl::geometric::PathGeometric &path, std::vector<Point> &collisions);
+    bool isValid(ompl::geometric::PathGeometric &path, std::vector <Point> &collisions);
 
     Stopwatch stopwatch;
 
@@ -29,13 +29,19 @@ public:
 
     bool collides(double x, double y) { return mBenchmarkEnvironment->collides(x, y); }
 
-    std::vector<bool> collides_positions(const std::vector<Position> &positions);
+    std::vector<bool> collides_positions(const std::vector <Position> &positions);
 
     std::tuple<double, double, double, double> bounds();
 
     PathStatistics evaluate(ompl::geometric::PathGeometric &path, const std::string &name);
 
-    void evaluateAndSaveResult(const std::vector<Position> &resultPath, const std::string &name);
+    void evaluateAndSaveResult(const std::vector <Position> &resultPath, const std::string &name);
+
+    void evaluateAndSaveResultSmoothing(const std::vector <Position> &resultPath,
+                                        const std::vector <Position> &resultPathSmoothed,
+                                        const std::string &planner_name,
+                                        const std::string &smoother_name,
+                                        const double &time);
 
     Position start();
 

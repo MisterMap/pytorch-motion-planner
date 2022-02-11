@@ -13,6 +13,7 @@ PYBIND11_MODULE(pybench_mr, module) {
             .def("collides_positions", &BenchmarkAdapter::collides_positions)
             .def("bounds", &BenchmarkAdapter::bounds)
             .def("evaluateAndSaveResult", &BenchmarkAdapter::evaluateAndSaveResult)
+            .def("evaluateAndSaveResultSmoothing", &BenchmarkAdapter::evaluateAndSaveResultSmoothing)
             .def("start", &BenchmarkAdapter::start)
             .def("goal", &BenchmarkAdapter::goal);
 

@@ -100,7 +100,7 @@ PathStatistics BenchmarkAdapter::evaluate(ompl::geometric::PathGeometric &path, 
     return stats;
 }
 
-void BenchmarkAdapter::evaluateAndSaveResult(const std::vector<Position> &resultPath, const std::string &name) {
+void BenchmarkAdapter::evaluateAndSaveResult(const std::vector <Position> &resultPath, const std::string &name) {
     stopwatch.stop();
     auto omplResultPath = omplPathFromPositions(resultPath);
     nlohmann::json info;
@@ -114,7 +114,36 @@ void BenchmarkAdapter::evaluateAndSaveResult(const std::vector<Position> &result
     Log::save(global::settings.benchmark.log_file);
 }
 
-ompl::geometric::PathGeometric BenchmarkAdapter::omplPathFromPositions(const std::vector<Position> &resultPath) {
+void BenchmarkAdapter::evaluateAndSaveResultSmoothing(const std::vector <Position> &resultPath,
+                                                      const std::vector <Position> &resultPathSmoothed,
+                                                      const std::string &planner_name,
+                                                      const std::string &smoother_name,
+                                                      const double &time) {
+    stopwatch.stop();
+    auto omplResultPath = omplPathFromPositions(resultPath);
+    auto omplResultPathSmoothed = omplPathFromPositions(resultPathSmoothed);
+    nlohmann::json info;
+    mBenchmarkEnvironment->to_json(info["environment"]);
+    info["settings"] = nlohmann::json(global::settings)["settings"];
+
+    //log path from planner
+    auto &path_info = info["plans"][planner_name];
+    path_info["trajectory"] = Log::serializeTrajectory(omplResultPath);
+    path_info["path"] = Log::serializeTrajectory(omplResultPath);
+    path_info["stats"] = nlohmann::json(evaluate(omplResultPath, planner_name))["stats"];
+
+    //log path from smoother
+    auto &smoother_info = info["plans"][planner_name]["smoothing"][smoother_name];
+    smoother_info["path"] = Log::serializeTrajectory(omplResultPathSmoothed);
+    smoother_info["time"] = time;
+    smoother_info["trajectory"] = Log::serializeTrajectory(omplResultPathSmoothed);
+    smoother_info["stats"] = nlohmann::json(evaluate(omplResultPathSmoothed, planner_name))["stats"];
+    smoother_info["name"] = smoother_name;
+    Log::log(info);
+    Log::save(global::settings.benchmark.log_file);
+}
+
+ompl::geometric::PathGeometric BenchmarkAdapter::omplPathFromPositions(const std::vector <Position> &resultPath) {
     ompl::geometric::PathGeometric result(global::settings.ompl.space_info);
     for (const auto position: resultPath) {
         result.append(base::StateFromXYT(position.x, position.y, position.angle));
@@ -138,11 +167,11 @@ Position BenchmarkAdapter::goal() {
     return {x, y, angle};
 }
 
-std::vector<bool> BenchmarkAdapter::collides_positions(const std::vector<Position> &positions) {
+std::vector<bool> BenchmarkAdapter::collides_positions(const std::vector <Position> &positions) {
     std::vector<bool> result(positions.size());
     for (int i = 0; i < positions.size(); i++) {
         const auto &position = positions[i];
-        ompl::base::ScopedState<ob::SE2StateSpace> state(
+        ompl::base::ScopedState <ob::SE2StateSpace> state(
                 global::settings.ompl.state_space);
         state->setX(position.x);
         state->setY(position.y);
@@ -152,9 +181,9 @@ std::vector<bool> BenchmarkAdapter::collides_positions(const std::vector<Positio
     return result;
 }
 
-bool BenchmarkAdapter::isValid(ompl::geometric::PathGeometric &path, std::vector<Point> &collisions) {
+bool BenchmarkAdapter::isValid(ompl::geometric::PathGeometric &path, std::vector <Point> &collisions) {
     collisions.clear();
-    for (const auto *state : path.getStates())
+    for (const auto *state: path.getStates())
         if (!mBenchmarkEnvironment->checkValidity(state))
             collisions.emplace_back(state);
     return collisions.empty();
