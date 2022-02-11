@@ -69,52 +69,79 @@ RUN \
     liblapack-dev \
     gnutls-bin
 
+RUN python3.9 -m pip install numpy --upgrade \
+			      torch --upgrade \
+			      pillow --upgrade \
+			      kiwisolver --upgrade \
+			      pytorch_lightning --upgrade \
+			      scipy --upgrade \
+			      pandas --upgrade \
+			      scikit-learn --upgrade \
+			      scikit-image --upgrade \
+			      cython --upgrade \
+			      bokeh --upgrade \
+			      sqlalchemy --upgrade \
+			      h5py --upgrade \
+			      vincent --upgrade \
+			      jupyterlab --upgrade \
+			      click --upgrade \
+			      bitarray --upgrade \
+			      psutil --upgrade \
+			      tqdm --upgrade \
+			      ipywidgets --upgrade \
+			      seaborn --upgrade \
+			      sympy --upgrade \
+			      cloudpickle --upgrade \
+			      dill --upgrade \
+			      dask --upgrade \
+			      bokeh --upgrade \
+			      sqlalchemy --upgrade \
+			      beautifulsoup4 --upgrade \
+			      protobuf --upgrade \
+			      xlrd --upgrade \
+			      matplotlib --upgrade
 
-RUN python3.9 -m pip install numpy --upgrade
-RUN python3.9 -m pip install torch --upgrade
-RUN python3.9 -m pip install matplotlib --upgrade
-RUN python3.9 -m pip install pillow --upgrade
-RUN python3.9 -m pip install kiwisolver --upgrade
-RUN python3.9 -m pip install pytorch_lightning --upgrade
-RUN python3.9 -m pip install scipy --upgrade
-  
-RUN mkdir -p /root/code
-WORKDIR /root/code
 RUN git config --global http.postBuffer 1048576000
-#RUN git clone --progress --verbose https://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@github.com/MisterMap/pytorch-motion-planner.git
-COPY . /root/code/pytorch-motion-planner
-WORKDIR /root/code/pytorch-motion-planner
-RUN python3.9 setup.py install
-RUN git submodule  update --init --recursive --remote
-
+ 
+RUN mkdir -p /root/code
 
 # Build and install OMPL
 WORKDIR /root/code
 RUN git clone https://github.com/ompl/ompl.git && cd ompl && mkdir build && cd build && cmake .. && make -j4 && make install
 
-
 # Build and install SBPL
 WORKDIR /root/code
 RUN git clone https://github.com/sbpl/sbpl.git && cd sbpl && git checkout 1.3.1 && mkdir build && cd build && cmake .. && make -j4 && make install
 
+# Set up Node.js 15.x repo
+RUN curl -sL https://deb.nodesource.com/setup_15.x | bash -
+RUN \
+  DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    nodejs
+
+# Install ipywidgets for Jupyter Lab
+RUN jupyter labextension install @jupyter-widgets/jupyterlab-manager
+
+# Build and install main repo
+WORKDIR /root/code
+COPY . /root/code/pytorch-motion-planner
+RUN mkdir -p /root/code/pytorch-motion-planner/notebooks/benchmark/plots
 
 WORKDIR /root/code/pytorch-motion-planner
+RUN python3.9 setup.py install
+RUN git submodule update --init --recursive --remote --progress 
+
 RUN chmod u+x benchmark/third_party/bench-mr/scripts/build.sh
 RUN bash benchmark/third_party/bench-mr/scripts/build.sh
+
 RUN rm -rf build && mkdir build
 WORKDIR /root/code/pytorch-motion-planner/build
-
 RUN cmake -DINSTALL_BENCHMARK=ON -DPYBIND11_PYTHON_VERSION=3.9 ..
 RUN make -j4
 COPY Docker/2022-01-14_17-19-42_config.json /root/code/pytorch-motion-planner/test/test_benchmark/
 RUN export PYTHONPATH=$PYTHONPATH:/root/code/pytorch-motion-planner/build/benchmark
 
 WORKDIR /root/code/pytorch-motion-planner
-RUN pip3 install --upgrade pip
-RUN pip3 install -r Docker/requirements.txt
-
-# Install ipywidgets for Jupyter Lab
-RUN jupyter labextension install @jupyter-widgets/jupyterlab-manager
 # Use bash as default shell
 SHELL ["/bin/bash", "-c"]
 
