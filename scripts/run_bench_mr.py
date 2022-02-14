@@ -44,7 +44,7 @@ planner_parameters = AttributeDict(
     planner=AttributeDict(
         name="ConstrainedNERFOptPlanner",
         trajectory_random_offset=0.02,
-        collision_weight=1,
+        collision_weight=20,
         velocity_hessian_weight=0.5,
         random_field_points=10,
         init_collision_iteration=0,
@@ -88,7 +88,7 @@ fig = None
 if is_show:
     fig = plt.figure(dpi=200)
 
-for i in range(500):
+for i in range(1000):
     planner.step()
     if is_show:
         trajectory = planner.get_path()
