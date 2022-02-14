@@ -23,3 +23,6 @@ class CollisionChecker(object):
 
     def update_boundaries(self, boundaries):
         self._boundaries = boundaries
+
+    def get_boundaries(self):
+        return self._boundaries

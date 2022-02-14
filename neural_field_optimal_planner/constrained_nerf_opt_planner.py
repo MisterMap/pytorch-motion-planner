@@ -10,10 +10,11 @@ from .utils.position2 import Position2
 
 class ConstrainedNERFOptPlanner(NERFOptPlanner):
     def __init__(self, trajectory, collision_model, collision_checker, collision_optimizer, trajectory_optimizer,
-                 trajectory_random_offset, collision_weight, velocity_hessian_weight, init_collision_iteration=100,
-                 init_collision_points=100, reparametrize_trajectory_freq=10, optimize_collision_model_freq=1,
-                 random_field_points=10, angle_weight=0.5, constraint_deltas_weight=20, multipliers_lr=1e-1,
-                 boundary_weight=1, collision_multipliers_lr=1e-3, angle_offset=0, collision_beta=1):
+                 trajectory_initializer, trajectory_random_offset, collision_weight, velocity_hessian_weight,
+                 init_collision_iteration=100, init_collision_points=100, reparametrize_trajectory_freq=10,
+                 optimize_collision_model_freq=1, random_field_points=10, angle_weight=0.5, constraint_deltas_weight=20,
+                 multipliers_lr=1e-1, boundary_weight=1, collision_multipliers_lr=1e-3, angle_offset=0,
+                 collision_beta=1, direction_delta_weight=0):
         super().__init__(trajectory, collision_model, collision_checker, collision_optimizer, trajectory_optimizer,
                          trajectory_random_offset, collision_weight, velocity_hessian_weight, init_collision_iteration,
                          init_collision_points, reparametrize_trajectory_freq, optimize_collision_model_freq,
@@ -34,15 +35,11 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         self._collision_positions = np.zeros((0, 3))
         self._angle_offset = angle_offset
         self._collision_beta = collision_beta
+        self._trajectory_initializer = trajectory_initializer
+        self._direction_delta_weight = direction_delta_weight
 
     def _init_trajectory(self):
-        super()._init_trajectory()
-        with torch.no_grad():
-            trajectory_length = self._trajectory.shape[0] + 2
-            delta_angle = wrap_angle(self._goal_point[0, 2] - self._start_point[0, 2])
-            goal_angle = delta_angle + self._start_point[0, 2]
-            self._trajectory[:, 2] = torch.linspace(
-                self._start_point[0, 2], goal_angle, trajectory_length)[1:-1]
+        self._trajectory_initializer.initialize_trajectory(self._trajectory, self._start_point, self._goal_point)
 
     def _calculate_distances(self):
         full_trajectory = self.full_trajectory()
@@ -86,9 +83,12 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         collision_loss = torch.sum(softplus_collision_probabilities)
 
         constraint_deltas = self.non_holonomic_constraint_deltas()
+        direction_deltas = self.direction_constraint_deltas()
+        direction_deltas = torch.where(direction_deltas > 0, direction_deltas, torch.zeros_like(direction_deltas))
         loss = self.distance_loss() + collision_loss * self._collision_weight + torch.sum(
             self._constraint_multipliers * constraint_deltas) + torch.sum(constraint_deltas ** 2) * \
-               self._constraint_delta_weight + self.boundary_loss() * self._boundary_weight + collision_multipliers_loss
+            self._constraint_delta_weight + self.boundary_loss() * self._boundary_weight + collision_multipliers_loss +\
+            self._direction_delta_weight * torch.sum(direction_deltas ** 2)
         return loss
 
     def non_holonomic_constraint_deltas(self):
