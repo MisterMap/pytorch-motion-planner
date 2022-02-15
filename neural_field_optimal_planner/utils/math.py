@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.interpolate
 
 
 def calculate_curvature(x, y, t):
@@ -51,3 +52,14 @@ def calculate_tangent(x, y, t):
 def sinc(x, epsilon=1e-4):
     x = np.where(np.abs(x) > epsilon, x, np.sign(x) * epsilon)
     return np.sin(x) / x
+
+
+def reparametrize_path(path, point_count):
+    distances = np.linalg.norm(path[1:] - path[:-1], axis=1) + 1e-6
+    cum_distances = np.cumsum(distances)
+    cum_distances = np.concatenate([np.zeros(1), cum_distances], axis=0)
+    parametrization = cum_distances / cum_distances[-1]
+    new_parametrization = np.linspace(0, 1, point_count)
+    interpolated_trajectory = scipy.interpolate.interp1d(parametrization, path, kind="quadratic", axis=0,
+                                                         fill_value="extrapolate")
+    return interpolated_trajectory(new_parametrization)
