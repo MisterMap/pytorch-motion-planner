@@ -97,7 +97,41 @@ PathStatistics BenchmarkAdapter::evaluate(ompl::geometric::PathGeometric &path, 
         stats.min_clearing_distance = statistics::min(clearings);
         stats.max_clearing_distance = statistics::max(clearings);
     }
+    const auto pointPath = Point::fromPath(solution);
+    computeCusps(stats, pointPath);
     return stats;
+}
+
+void BenchmarkAdapter::computeCusps(PathStatistics &stats, const std::vector<Point>& path) {
+    std::vector<Point> &cusps = stats.cusps.value();
+
+    auto prev = path.begin();
+    auto current = prev;
+    auto next = prev;
+    while (next != path.end()) {
+        // advance until current point != prev point, i.e., skip duplicates
+        if (prev->distance(*current) <= 0) {
+            ++current;
+            ++next;
+        } else if (current->distance(*next) <= 0) {
+            ++next;
+        } else {
+            const double yaw_prev = PlannerUtils::slope(*prev, *current);
+            const double yaw_next = PlannerUtils::slope(*current, *next);
+
+            // compute angle difference in [0, pi)
+            // close to pi -> cusp; 0 -> straight line; inbetween -> curve
+            const double yaw_change =
+                    std::abs(PlannerUtils::normalizeAngle(yaw_next - yaw_prev));
+
+            if (yaw_change > global::settings.cusp_angle_threshold) {
+                cusps.emplace_back(*current);
+            }
+            prev = current;
+            current = next;
+            ++next;
+        }
+    }
 }
 
 void BenchmarkAdapter::evaluateAndSaveResult(const std::vector<Position> &resultPath, const std::string &name) {
@@ -154,7 +188,7 @@ std::vector<bool> BenchmarkAdapter::collides_positions(const std::vector<Positio
 
 bool BenchmarkAdapter::isValid(ompl::geometric::PathGeometric &path, std::vector<Point> &collisions) {
     collisions.clear();
-    for (const auto *state : path.getStates())
+    for (const auto *state: path.getStates())
         if (!mBenchmarkEnvironment->checkValidity(state))
             collisions.emplace_back(state);
     return collisions.empty();
@@ -162,5 +196,14 @@ bool BenchmarkAdapter::isValid(ompl::geometric::PathGeometric &path, std::vector
 
 double BenchmarkAdapter::planningTime() {
     return stopwatch.elapsed();
+}
+
+std::tuple<bool, double> BenchmarkAdapter::evaluatePath(const std::vector<Position> &resultPath) {
+    auto omplResultPath = omplPathFromPositions(resultPath);
+    auto solution = PlannerUtils::interpolated(omplResultPath);
+    std::vector<Point> collisions;
+    auto path_collides = !isValid(solution, collisions);
+    auto path_length = PathLengthMetric::evaluate(solution);
+    return {path_collides, path_length};
 }
 

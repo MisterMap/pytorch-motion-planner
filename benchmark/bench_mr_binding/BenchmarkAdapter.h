@@ -20,6 +20,8 @@ class BenchmarkAdapter {
 
     bool isValid(ompl::geometric::PathGeometric &path, std::vector<Point> &collisions);
 
+    static void computeCusps(PathStatistics &stats, const std::vector<Point>& path);
+
     Stopwatch stopwatch;
 
 public:
@@ -36,6 +38,8 @@ public:
     PathStatistics evaluate(ompl::geometric::PathGeometric &path, const std::string &name);
 
     void evaluateAndSaveResult(const std::vector<Position> &resultPath, const std::string &name);
+
+    std::tuple<bool, double> evaluatePath(const std::vector<Position> &resultPath);
 
     Position start();
 
