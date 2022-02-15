@@ -39,7 +39,7 @@ class AstarTrajectoryInitializer(TrajectoryInitializer):
         matrix = collisions.reshape(x_cells, y_cells)
         planner = JPS(matrix, jps=False)
         path = planner.find_path((start_y_cell, start_x_cell), (goal_y_cell, goal_x_cell))
-        final_path = np.zeros_like(path)
+        final_path = np.zeros_like(path).astype(np.float32)
         final_path[:, 0] = path[:, 1] * self._resolution + self._resolution / 2 + boundaries[0]
         final_path[:, 1] = path[:, 0] * self._resolution + self._resolution / 2 + boundaries[2]
         return final_path

@@ -6,6 +6,7 @@ from torch import nn
 from .nerf_opt_planner import NERFOptPlanner
 from .torch_math import wrap_angle
 from .utils.position2 import Position2
+from .utils.timer import timer
 
 
 class ConstrainedNERFOptPlanner(NERFOptPlanner):
@@ -71,13 +72,18 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         self._collision_multipliers.grad = None
 
     def trajectory_loss(self):
-        t = torch.tensor(np.random.rand(self._trajectory.shape[0] - 1).astype(np.float32), device=self._device)[:, None]
+        timer.tick("trajectory_loss")
+        t = torch.rand(self._trajectory.shape[0] - 1, 1, device=self._device)
         trajectory_delta = self._trajectory[:-1] - self._trajectory[1:]
+        timer.tick("wrap_angle")
         trajectory_delta[:, 2] = wrap_angle(trajectory_delta[:, 2])
+        timer.tock("wrap_angle")
         collision_positions = self._trajectory[1:] + t * trajectory_delta
         collision_multipliers = self._collision_multipliers[1:] * (
                 1 - t[:, 0]) + self._collision_multipliers[:-1] * t[:, 0]
+        timer.tick("collision_model")
         collision_probabilities = self._collision_model(collision_positions)
+        timer.tock("collision_model")
         softplus_collision_probabilities = nn.functional.softplus(collision_probabilities, self._collision_beta)
         collision_multipliers_loss = torch.sum(collision_multipliers * torch.tanh(collision_probabilities[:, 0]))
         collision_loss = torch.sum(softplus_collision_probabilities)
@@ -87,8 +93,10 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         direction_deltas = torch.where(direction_deltas > 0, direction_deltas, torch.zeros_like(direction_deltas))
         loss = self.distance_loss() + collision_loss * self._collision_weight + torch.sum(
             self._constraint_multipliers * constraint_deltas) + torch.sum(constraint_deltas ** 2) * \
-            self._constraint_delta_weight + self.boundary_loss() * self._boundary_weight + collision_multipliers_loss +\
-            self._direction_delta_weight * torch.sum(direction_deltas ** 2)
+               self._constraint_delta_weight + self.boundary_loss() * self._boundary_weight + \
+               collision_multipliers_loss + \
+               self._direction_delta_weight * torch.sum(direction_deltas ** 2)
+        timer.tock("trajectory_loss")
         return loss
 
     def non_holonomic_constraint_deltas(self):
