@@ -138,7 +138,6 @@ RUN rm -rf build && mkdir build
 WORKDIR /root/code/pytorch-motion-planner/build
 RUN cmake -DINSTALL_BENCHMARK=ON -DPYBIND11_PYTHON_VERSION=3.9 ..
 RUN make -j4
-#COPY Docker/2022-01-14_17-19-42_config.json /root/code/pytorch-motion-planner/test/test_benchmark/
 RUN export PYTHONPATH=$PYTHONPATH:/root/code/pytorch-motion-planner/build/benchmark
 
 WORKDIR /root/code/pytorch-motion-planner
