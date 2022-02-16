@@ -23,8 +23,12 @@ planner_parameters = AttributeDict(
         angle_encoding=True,
         name="ONF"
     ),
+    trajectory_initializer=AttributeDict(
+        name="TrajectoryInitializer",
+        resolution=0.05
+    ),
     collision_optimizer=AttributeDict(
-        lr=1e-2,
+        lr=5e-2,
         betas=(0.9, 0.9)
     ),
     trajectory_optimizer=AttributeDict(
@@ -38,7 +42,7 @@ planner_parameters = AttributeDict(
         velocity_hessian_weight=0.5,
         random_field_points=10,
         init_collision_iteration=0,
-        constraint_deltas_weight=200,
+        constraint_deltas_weight=20,
         multipliers_lr=0.1,
         init_collision_points=100,
         reparametrize_trajectory_freq=10,
