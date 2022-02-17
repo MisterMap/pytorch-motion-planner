@@ -15,7 +15,8 @@ PYBIND11_MODULE(pybench_mr, module) {
             .def("evaluateAndSaveResult", &BenchmarkAdapter::evaluateAndSaveResult)
             .def("evaluateAndSaveResultSmoothing", &BenchmarkAdapter::evaluateAndSaveResultSmoothing)
             .def("start", &BenchmarkAdapter::start)
-            .def("goal", &BenchmarkAdapter::goal);
+            .def("goal", &BenchmarkAdapter::goal)
+            .def("evaluatePath", &BenchmarkAdapter::evaluatePath);
 
     py::class_<Position>(module, "Position")
             .def(py::init<double, double, double>())

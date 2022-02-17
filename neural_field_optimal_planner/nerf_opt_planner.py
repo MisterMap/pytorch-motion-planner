@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.nn import functional
 
 from .continuous_planner import ContinuousPlanner
+from .utils.timer import timer
 
 
 class NERFOptPlanner(ContinuousPlanner):
@@ -57,18 +58,23 @@ class NERFOptPlanner(ContinuousPlanner):
         return hessian
 
     def step(self):
+        timer.tick("step")
         if self._step_count % self._optimize_collision_model_freq == 0:
             self._optimize_collision_model()
         self._optimize_trajectory()
+        timer.tick("reparametrize_trajectory")
         if self._step_count % self._reparametrize_trajectory_freq == 0:
             with torch.no_grad():
                 self.reparametrize_trajectory()
+        timer.tock("reparametrize_trajectory")
         self._step_count += 1
+        timer.tock("step")
 
     def full_trajectory(self):
         return torch.cat([self._start_point, self._trajectory, self._goal_point], dim=0)
 
     def _optimize_collision_model(self, positions=None):
+        timer.tick("optimize_collision_model")
         if positions is None:
             if self._previous_trajectory is None:
                 self._previous_trajectory = self._trajectory.detach().clone()
@@ -82,6 +88,7 @@ class NERFOptPlanner(ContinuousPlanner):
         loss = self._collision_loss_function(predicted_collision, truth_collision)
         loss.backward()
         self._collision_optimizer.step()
+        timer.tock("optimize_collision_model")
 
     def _calculate_truth_collision(self, positions):
         self.checked_positions = positions.copy()
@@ -137,9 +144,15 @@ class NERFOptPlanner(ContinuousPlanner):
         self._collision_model.requires_grad_(False)
         self._trajectory_optimizer.zero_grad()
         loss = self.trajectory_loss()
+        timer.tick("trajectory_backward")
         loss.backward()
+        timer.tock("trajectory_backward")
+        timer.tick("inv_hes_grad_multiplication")
         self._trajectory.grad = self._inv_hessian @ self._trajectory.grad
+        timer.tock("inv_hes_grad_multiplication")
+        timer.tick("trajectory_optimizer_step")
         self._trajectory_optimizer.step()
+        timer.tock("trajectory_optimizer_step")
 
     def trajectory_loss(self):
         collision_positions = self._random_intermediate_positions()

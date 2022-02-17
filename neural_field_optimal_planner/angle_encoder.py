@@ -9,7 +9,7 @@ class AngleEncoder(nn.Module):
         self._encoding_dimension = encoding_dimension
         self._biases = nn.Parameter(torch.zeros(2 * self._encoding_dimension), requires_grad=True)
         frequencies = torch.linspace(1, encoding_dimension, encoding_dimension)
-        self._frequencies = torch.cat([frequencies, frequencies], dim=0)
+        self._frequencies = nn.Parameter(torch.cat([frequencies, frequencies], dim=0), requires_grad=False)
         nn.init.uniform_(self._biases, -np.pi, np.pi)
 
     def forward(self, x):

@@ -1,9 +1,11 @@
 import torch
 from pytorch_lightning.utilities.parsing import AttributeDict
 
+from .astar.astar_trajectory_initializer import AstarTrajectoryInitializer
 from .constrained_nerf_opt_planner import ConstrainedNERFOptPlanner
 from .nerf_opt_planner import NERFOptPlanner
 from .onf_model import ONF
+from .trajectory_initializer import TrajectoryInitializer
 from .utils.universal_factory import UniversalFactory
 
 DEFAULT_PARAMETERS = AttributeDict(
@@ -60,12 +62,16 @@ class PlannerFactory(object):
     def make_constrained_onf_planner(collision_checker, parameters=None):
         if parameters is None:
             parameters = DEFAULT_PARAMETERS
-        factory = UniversalFactory([ONF, ConstrainedNERFOptPlanner])
+        factory = UniversalFactory([ONF, ConstrainedNERFOptPlanner, TrajectoryInitializer, AstarTrajectoryInitializer])
         device = parameters.device
         collision_model = factory.make_from_parameters(parameters.collision_model).to(device)
         collision_optimizer = torch.optim.Adam(collision_model.parameters(), **parameters.collision_optimizer)
         trajectory = torch.zeros(parameters.trajectory_length, 3, requires_grad=True, device=device)
         trajectory_optimizer = torch.optim.Adam([trajectory], **parameters.trajectory_optimizer)
+        trajectory_initializer = factory.make_from_parameters(parameters.trajectory_initializer,
+                                                              collision_checker=collision_checker)
         return factory.make_from_parameters(parameters.planner, trajectory=trajectory, collision_model=collision_model,
-                                            collision_checker=collision_checker, collision_optimizer=collision_optimizer,
-                                            trajectory_optimizer=trajectory_optimizer)
+                                            collision_checker=collision_checker,
+                                            collision_optimizer=collision_optimizer,
+                                            trajectory_optimizer=trajectory_optimizer,
+                                            trajectory_initializer=trajectory_initializer)

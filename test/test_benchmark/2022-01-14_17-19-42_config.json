@@ -21,7 +21,7 @@
         "active": false,
         "create_border": true,
         "end": -1,
-        "scenario": "/home/student/repos/pytorch-motion-planner/benchmark/third_party/bench-mr/bin/moving_ai_scenarios/Berlin_0_256.map",
+        "scenario": "benchmark/third_party/bench-mr/bin/moving_ai_scenarios/Berlin_0_256.map",
         "start": -10
       },
       "planning": {
@@ -102,7 +102,7 @@
       },
       "polygon": {
         "scaling": 1.0,
-        "source": "/home/student/repos/pytorch-motion-planner/benchmark/third_party/bench-mr/bin/polygon_mazes/warehouse2.svg"
+        "source": "benchmark/third_party/bench-mr/bin/polygon_mazes/warehouse2.svg"
       },
       "start": {
         "theta": -1.58,

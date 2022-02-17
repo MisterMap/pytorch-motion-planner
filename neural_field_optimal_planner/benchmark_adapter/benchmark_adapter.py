@@ -33,3 +33,7 @@ class BenchmarkAdapter(object):
         goal_position = self._benchmark_adapter_impl.goal()
         goal_position = Position2(goal_position.x, goal_position.y, goal_position.angle)
         return goal_position
+
+    def evaluate_path(self, path):
+        path = [Position(x[0], x[1], x[2]) for x in path]
+        return self._benchmark_adapter_impl.evaluatePath(path)

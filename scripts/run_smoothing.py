@@ -6,14 +6,58 @@ import argparse
 import json
 import os
 import time
+from pytorch_lightning.utilities import AttributeDict
 
 from neural_field_optimal_planner.planner_factory import PlannerFactory
-from neural_field_optimal_planner.plotting_utils import prepare_figure, plot_planner_data, plot_nerf_opt_planner
-from neural_field_optimal_planner.benchmark_adapter import BenchmarkAdapter
-from neural_field_optimal_planner.benchmark_adapter.benchmark_collision_checker import BenchmarkCollisionChecker
+from neural_field_optimal_planner.plotting_utils import *
+from neural_field_optimal_planner.test_environment_builder import TestEnvironmentBuilder
 
 torch.random.manual_seed(100)
 np.random.seed(400)
+
+planner_parameters = AttributeDict(
+    device="cpu",
+    trajectory_length=100,
+    collision_model=AttributeDict(
+        mean=0,
+        sigma=1,
+        use_cos=True,
+        bias=True,
+        use_normal_init=True,
+        angle_encoding=True,
+        name="ONF"
+    ),
+    trajectory_initializer=AttributeDict(
+        name="TrajectoryInitializer",
+        resolution=0.05
+    ),
+    collision_optimizer=AttributeDict(
+        lr=5e-2,
+        betas=(0.9, 0.9)
+    ),
+    trajectory_optimizer=AttributeDict(
+        lr=1e-2,
+        betas=(0.9, 0.9)
+    ),
+    planner=AttributeDict(
+        name="ConstrainedNERFOptPlanner",
+        trajectory_random_offset=0.02,
+        collision_weight=1,
+        velocity_hessian_weight=0.5,
+        random_field_points=10,
+        init_collision_iteration=0,
+        constraint_deltas_weight=20,
+        multipliers_lr=0.1,
+        init_collision_points=100,
+        reparametrize_trajectory_freq=10,
+        optimize_collision_model_freq=1,
+        angle_weight=0.5,
+        angle_offset=0.3,
+        boundary_weight=1,
+        collision_multipliers_lr=1e-3
+    )
+)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("settings")
@@ -33,7 +77,7 @@ for run_number in range(run_numbers):
     benchmark = BenchmarkAdapter(args.settings)
     collision_checker = BenchmarkCollisionChecker(benchmark, benchmark.bounds())
 
-    planner = PlannerFactory.make_constrained_onf_planner(collision_checker)
+    planner = PlannerFactory.make_constrained_onf_planner(collision_checker, planner_parameters)
     goal_point = benchmark.goal().as_vec()
     start_point = benchmark.start().as_vec()
     trajectory_boundaries = benchmark.bounds()

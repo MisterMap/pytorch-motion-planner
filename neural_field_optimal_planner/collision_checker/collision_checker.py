@@ -3,7 +3,7 @@ import numpy as np
 
 class CollisionChecker(object):
     def __init__(self, collision_boundaries=None):
-        self._obstacle_points = np.zeros((0, 3))
+        self._obstacle_points = np.zeros((0, 2))
         self._boundaries = collision_boundaries
 
     def check_collision(self, test_positions):
@@ -23,3 +23,6 @@ class CollisionChecker(object):
 
     def update_boundaries(self, boundaries):
         self._boundaries = boundaries
+
+    def get_boundaries(self):
+        return self._boundaries

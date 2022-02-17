@@ -6,14 +6,16 @@ from torch import nn
 from .nerf_opt_planner import NERFOptPlanner
 from .torch_math import wrap_angle
 from .utils.position2 import Position2
+from .utils.timer import timer
 
 
 class ConstrainedNERFOptPlanner(NERFOptPlanner):
     def __init__(self, trajectory, collision_model, collision_checker, collision_optimizer, trajectory_optimizer,
-                 trajectory_random_offset, collision_weight, velocity_hessian_weight, init_collision_iteration=100,
-                 init_collision_points=100, reparametrize_trajectory_freq=10, optimize_collision_model_freq=1,
-                 random_field_points=10, angle_weight=0.5, constraint_deltas_weight=20, multipliers_lr=1e-1,
-                 boundary_weight=1, collision_multipliers_lr=1e-3, angle_offset=0):
+                 trajectory_initializer, trajectory_random_offset, collision_weight, velocity_hessian_weight,
+                 init_collision_iteration=100, init_collision_points=100, reparametrize_trajectory_freq=10,
+                 optimize_collision_model_freq=1, random_field_points=10, angle_weight=0.5, constraint_deltas_weight=20,
+                 multipliers_lr=1e-1, boundary_weight=1, collision_multipliers_lr=1e-3, angle_offset=0,
+                 collision_beta=1, direction_delta_weight=0):
         super().__init__(trajectory, collision_model, collision_checker, collision_optimizer, trajectory_optimizer,
                          trajectory_random_offset, collision_weight, velocity_hessian_weight, init_collision_iteration,
                          init_collision_points, reparametrize_trajectory_freq, optimize_collision_model_freq,
@@ -33,13 +35,12 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         self._collision_multipliers.grad = None
         self._collision_positions = np.zeros((0, 3))
         self._angle_offset = angle_offset
+        self._collision_beta = collision_beta
+        self._trajectory_initializer = trajectory_initializer
+        self._direction_delta_weight = direction_delta_weight
 
     def _init_trajectory(self):
-        super()._init_trajectory()
-        with torch.no_grad():
-            trajectory_length = self._trajectory.shape[0] + 2
-            self._trajectory[:, 2] = torch.linspace(
-                self._start_point[0, 2], self._goal_point[0, 2], trajectory_length)[1:-1]
+        self._trajectory_initializer.initialize_trajectory(self._trajectory, self._start_point, self._goal_point)
 
     def _calculate_distances(self):
         full_trajectory = self.full_trajectory()
@@ -60,6 +61,7 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         return positions
 
     def _optimize_trajectory(self):
+        timer.tick("optimizer_trajectory")
         super()._optimize_trajectory()
         self._constraint_multipliers.data.add_(self._multipliers_lr * self._constraint_multipliers.grad.detach())
         self._constraint_multipliers.grad = None
@@ -69,23 +71,32 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
             self._collision_multipliers.data = torch.where(self._collision_multipliers > 0, self._collision_multipliers,
                                                            torch.zeros_like(self._collision_multipliers))
         self._collision_multipliers.grad = None
+        timer.tock("optimizer_trajectory")
 
     def trajectory_loss(self):
-        t = torch.tensor(np.random.rand(self._trajectory.shape[0] - 1).astype(np.float32), device=self._device)[:, None]
+        timer.tick("trajectory_loss")
+        t = torch.rand(self._trajectory.shape[0] - 1, 1, device=self._device)
         trajectory_delta = self._trajectory[:-1] - self._trajectory[1:]
         trajectory_delta[:, 2] = wrap_angle(trajectory_delta[:, 2])
         collision_positions = self._trajectory[1:] + t * trajectory_delta
         collision_multipliers = self._collision_multipliers[1:] * (
                 1 - t[:, 0]) + self._collision_multipliers[:-1] * t[:, 0]
+        timer.tick("trajectory_loss_collision_model")
         collision_probabilities = self._collision_model(collision_positions)
-        softplus_collision_probabilities = nn.functional.softplus(collision_probabilities)
+        timer.tock("trajectory_loss_collision_model")
+        softplus_collision_probabilities = nn.functional.softplus(collision_probabilities, self._collision_beta)
         collision_multipliers_loss = torch.sum(collision_multipliers * torch.tanh(collision_probabilities[:, 0]))
         collision_loss = torch.sum(softplus_collision_probabilities)
 
         constraint_deltas = self.non_holonomic_constraint_deltas()
+        direction_deltas = self.direction_constraint_deltas()
+        direction_deltas = torch.where(direction_deltas > 0, direction_deltas, torch.zeros_like(direction_deltas))
         loss = self.distance_loss() + collision_loss * self._collision_weight + torch.sum(
             self._constraint_multipliers * constraint_deltas) + torch.sum(constraint_deltas ** 2) * \
-               self._constraint_delta_weight + self.boundary_loss() * self._boundary_weight + collision_multipliers_loss
+               self._constraint_delta_weight + self.boundary_loss() * self._boundary_weight + \
+               collision_multipliers_loss + \
+               self._direction_delta_weight * torch.sum(direction_deltas ** 2)
+        timer.tock("trajectory_loss")
         return loss
 
     def non_holonomic_constraint_deltas(self):
@@ -114,8 +125,9 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         angle_sum = torch.sum(delta_angles.detach()) - full_trajectory[-1, 2] + full_trajectory[0, 2]
         delta[-1, 2] += angle_sum
         delta[:, 2] *= self._angle_weight
-        weight = torch.sum(delta ** 2).detach()
-        return torch.sum(delta ** 2) / weight
+        # weight = torch.sum(delta ** 2).detach()
+        # return torch.sum(delta ** 2) / weight
+        return torch.sum(delta ** 2)
 
     def reparametrize_trajectory(self):
         full_trajectory = self.full_trajectory()

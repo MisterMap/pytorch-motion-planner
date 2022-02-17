@@ -8,4 +8,4 @@ cd $PROJECT_DIR/build || exit
 
 cmake -DCMAKE_INSTALL_PREFIX=/home/mikhail/install/pytorch-motion-planner/ ..
 cmake --build . --target all -- -j8
-make install
+#make install
