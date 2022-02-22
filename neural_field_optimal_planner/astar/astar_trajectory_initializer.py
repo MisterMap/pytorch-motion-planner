@@ -8,8 +8,8 @@ from ..utils.position2 import Position2
 
 
 class AstarTrajectoryInitializer(TrajectoryInitializer):
-    def __init__(self, collision_checker, resolution):
-        super().__init__(collision_checker)
+    def __init__(self, collision_checker, resolution, init_angles_with_trajectory=False):
+        super().__init__(collision_checker, init_angles_with_trajectory)
         self._resolution = resolution
 
     def initialize_trajectory(self, trajectory, start_point, goal_point):
@@ -34,9 +34,10 @@ class AstarTrajectoryInitializer(TrajectoryInitializer):
         x, y = np.meshgrid(range(x_cells), range(y_cells))
         x = x.reshape(-1) * self._resolution + self._resolution / 2 + boundaries[0]
         y = y.reshape(-1) * self._resolution + self._resolution / 2 + boundaries[2]
-        positions = Position2(x, y, np.zeros_like(x))
+        positions = Position2(x, y, np.ones_like(x) * 3 * np.pi / 4)
         collisions = self._collision_checker.check_collision(positions)
-        matrix = collisions.reshape(x_cells, y_cells)
+        matrix = collisions.reshape(y_cells, x_cells)
+        matrix[goal_y_cell, goal_x_cell] = False
         planner = JPS(matrix, jps=False)
         path = planner.find_path((start_y_cell, start_x_cell), (goal_y_cell, goal_x_cell))
         final_path = np.zeros_like(path).astype(np.float32)

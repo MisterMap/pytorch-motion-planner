@@ -104,7 +104,7 @@ class ConstrainedNERFOptPlanner(NERFOptPlanner):
         dx = full_trajectory[1:, 0] - full_trajectory[:-1, 0]
         dy = full_trajectory[1:, 1] - full_trajectory[:-1, 1]
         angles = full_trajectory[:, 2]
-        delta_angles = angles[1:] - angles[:-1]
+        delta_angles = wrap_angle(angles[1:] - angles[:-1])
         mean_angles = angles[:-1] + delta_angles / 2
         return dx * torch.sin(mean_angles) - dy * torch.cos(mean_angles)
 
