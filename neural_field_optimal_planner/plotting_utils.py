@@ -6,14 +6,13 @@ from matplotlib import pyplot as plt
 def plot_planner_data(plotted_trajectory, collision_model, boundaries, obstacle_points, device="cpu"):
     plot_model_heatmap(collision_model, boundaries, device)
     plot_obstacle_points(obstacle_points)
-    plt.quiver(plotted_trajectory[:, 0], plotted_trajectory[:, 1],
-               np.cos(plotted_trajectory[:, 2]), np.sin(plotted_trajectory[:, 2]), color="yellow")
-    plt.scatter(plotted_trajectory[:, 0], plotted_trajectory[:, 1], color="yellow", s=1)
+    plt.scatter(plotted_trajectory[:, 0], plotted_trajectory[:, 1], color="yellow", s=10)
     plt.tight_layout()
 
 
 def prepare_figure(boundaries):
     plt.gca().set_aspect("equal")
+    plt.gca().axis('off')
     plt.xlim(boundaries[0], boundaries[1])
     plt.ylim(boundaries[2], boundaries[3])
 

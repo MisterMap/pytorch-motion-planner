@@ -135,8 +135,6 @@ for i in range(1000):
         fig.clear()
         prepare_figure(trajectory_boundaries)
         plot_planner_data(trajectory, collision_model, trajectory_boundaries, np.zeros((0, 2)), device=device)
-        # plot_nerf_opt_planner(planner)
-        # plot_collision_positions(planner.checked_positions, planner.truth_collision)
         plt.pause(0.01)
     if (i > 0) and (i % 20 == 0):
         collision, length = benchmark.evaluate_path(planner.get_path())
@@ -153,6 +151,4 @@ collision, length = benchmark.evaluate_path(path)
 if (length > best_length) or (collision and best_path is not None):
     path = best_path
 
-# result = np.array([start_point, goal_point])
 benchmark.evaluate_and_save_results(path, "constrained_onf_planner")
-# benchmark.evaluate_and_save_results(result, "constrained_onf_planner")
